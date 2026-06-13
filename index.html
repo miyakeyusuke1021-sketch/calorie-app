@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>カロリー管理</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif; }
+    .screen { display: none; }
+    .screen.active { display: block; min-height: 100vh; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+    .pb-nav { padding-bottom: 5.5rem; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .fade-in { animation: fadeIn 0.25s ease both; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 1s linear infinite; }
+  </style>
+</head>
+<body class="bg-gray-50">
+
+<!-- ===== CLAUDE API KEY MODAL ===== -->
+<div id="modal-api" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/60 flex items-center justify-center p-5">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl fade-in">
+      <div class="text-3xl mb-3 text-center">🔑</div>
+      <h2 class="text-xl font-bold text-center mb-1">Claude APIキーを設定</h2>
+      <p class="text-gray-500 text-sm text-center mb-5">食事のカロリー推定に使用します。<br>このデバイスにのみ保存されます。</p>
+      <input type="password" id="api-key-input" placeholder="sk-ant-..." autocomplete="off"
+        class="w-full border-2 rounded-xl px-4 py-3 text-base mb-1 focus:outline-none focus:border-blue-500 transition-colors"
+        onkeydown="if(event.key==='Enter')saveApiKey()">
+      <p id="api-key-err" class="text-red-500 text-xs mb-3 hidden">APIキーを入力してください</p>
+      <button onclick="saveApiKey()" class="w-full bg-blue-500 active:bg-blue-600 text-white rounded-xl py-3 text-base font-semibold">設定する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SUPABASE CONFIG MODAL ===== -->
+<div id="modal-supabase" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/60 flex items-center justify-center p-5">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl fade-in">
+      <div class="text-3xl mb-3 text-center">☁️</div>
+      <h2 class="text-xl font-bold text-center mb-1">クラウド同期の設定</h2>
+      <p class="text-gray-500 text-sm text-center mb-5">SupabaseでデータをクラウドにSync。<br>スキップするとローカルのみで動作します。</p>
+      <label class="text-xs font-semibold text-gray-500 block mb-1">Project URL</label>
+      <input type="url" id="sb-url-input" placeholder="https://xxxx.supabase.co" autocomplete="off"
+        class="w-full border-2 rounded-xl px-4 py-3 text-base mb-3 focus:outline-none focus:border-green-500 transition-colors">
+      <label class="text-xs font-semibold text-gray-500 block mb-1">Anon Key</label>
+      <input type="password" id="sb-key-input" placeholder="eyJhbGci..." autocomplete="off"
+        class="w-full border-2 rounded-xl px-4 py-3 text-base mb-1 focus:outline-none focus:border-green-500 transition-colors"
+        onkeydown="if(event.key==='Enter')saveSupabaseConfig()">
+      <p id="sb-err" class="text-red-500 text-xs mb-3 hidden">URLとAnon Keyの両方を入力してください</p>
+      <button onclick="saveSupabaseConfig()" class="w-full bg-green-500 active:bg-green-600 text-white rounded-xl py-3 text-base font-semibold mb-2">接続する</button>
+      <button onclick="hideModal('modal-supabase')" class="w-full text-gray-400 text-sm py-2 active:text-gray-600">スキップ（ローカルのみ）</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LOADING OVERLAY ===== -->
+<div id="loading-overlay" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-4">
+    <div class="bg-white rounded-2xl p-6 flex flex-col items-center gap-3 shadow-2xl">
+      <div class="w-10 h-10 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
+      <p id="loading-msg" class="text-gray-700 font-medium">AI推定中...</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div id="toast" class="fixed bottom-24 left-4 right-4 z-50 max-w-sm mx-auto bg-gray-800 text-white text-center py-3 px-4 rounded-xl text-sm opacity-0 pointer-events-none transition-all duration-300"></div>
+
+<!-- ===== HOME SCREEN ===== -->
+<div id="screen-home" class="screen active">
+  <div class="pb-nav">
+
+    <!-- Header -->
+    <div class="bg-white px-4 pt-14 pb-4 border-b sticky top-0 z-10 shadow-sm">
+      <div class="flex justify-between items-start">
+        <div>
+          <p id="home-datestr" class="text-gray-400 text-sm"></p>
+          <h1 class="text-2xl font-bold text-gray-900 leading-tight">今日の記録</h1>
+          <div id="sync-badge" class="mt-1 flex items-center gap-1"></div>
+        </div>
+        <button onclick="showScreen('settings')" class="w-11 h-11 flex items-center justify-center rounded-full bg-gray-100 active:bg-gray-200 mt-1">
+          <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 2000kcal Alert -->
+    <div id="home-alert" class="hidden mx-3 mt-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-2">
+      <span class="text-red-500 text-lg">⚠️</span>
+      <p class="text-red-600 text-sm font-semibold">本日のカロリーが2,000kcalを超えました</p>
+    </div>
+
+    <!-- Weight & Steps -->
+    <div class="mx-3 mt-3 bg-white rounded-2xl p-4 shadow-sm">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">今日の数値</p>
+      <div class="flex gap-3">
+        <div class="flex-1">
+          <label class="text-xs text-gray-500 block mb-1.5">体重</label>
+          <div class="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:border-blue-400 focus-within:bg-white transition-colors">
+            <input type="number" id="input-weight" step="0.1" min="30" max="250" placeholder="65.0"
+              class="flex-1 bg-transparent text-xl font-bold text-gray-900 focus:outline-none min-w-0"
+              onblur="saveTodayMeasurement()">
+            <span class="text-gray-400 text-sm ml-1 flex-shrink-0">kg</span>
+          </div>
+        </div>
+        <div class="flex-1">
+          <label class="text-xs text-gray-500 block mb-1.5">歩数</label>
+          <div class="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:border-blue-400 focus-within:bg-white transition-colors">
+            <input type="number" id="input-steps" step="1" min="0" placeholder="0"
+              class="flex-1 bg-transparent text-xl font-bold text-gray-900 focus:outline-none min-w-0"
+              onblur="saveTodayMeasurement()">
+            <span class="text-gray-400 text-sm ml-1 flex-shrink-0">歩</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Calorie Summary -->
+    <div class="mx-3 mt-3 bg-white rounded-2xl p-4 shadow-sm">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">カロリー</p>
+      <div class="mb-4">
+        <div class="flex justify-between items-baseline mb-2">
+          <span class="text-sm text-gray-600">今日</span>
+          <div class="flex items-baseline gap-1">
+            <span id="home-daily-num" class="text-3xl font-bold text-gray-900 tabular-nums">0</span>
+            <span class="text-gray-400 text-sm">/ 1,800 kcal</span>
+          </div>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+          <div id="home-daily-bar" class="h-full rounded-full bg-blue-400 transition-all duration-500" style="width:0%"></div>
+        </div>
+      </div>
+      <div>
+        <div class="flex justify-between items-baseline mb-2">
+          <span class="text-sm text-gray-600">今週</span>
+          <div class="flex items-baseline gap-1">
+            <span id="home-weekly-num" class="text-3xl font-bold text-gray-900 tabular-nums">0</span>
+            <span class="text-gray-400 text-sm">/ 12,600 kcal</span>
+          </div>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+          <div id="home-weekly-bar" class="h-full rounded-full bg-blue-400 transition-all duration-500" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weekly Chart -->
+    <div class="mx-3 mt-3 bg-white rounded-2xl p-4 shadow-sm">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">週間グラフ</p>
+      <div id="weekly-chart"></div>
+    </div>
+
+    <!-- Today's Meals -->
+    <div class="mx-3 mt-3 bg-white rounded-2xl p-4 shadow-sm">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">今日の食事</p>
+      <div id="home-meals"></div>
+      <button onclick="showScreen('meal')"
+        class="mt-3 w-full bg-blue-500 active:bg-blue-600 text-white rounded-xl py-3.5 font-semibold flex items-center justify-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+        </svg>
+        食事を記録する
+      </button>
+    </div>
+
+    <div class="h-3"></div>
+  </div>
+</div>
+
+<!-- ===== MEAL SCREEN ===== -->
+<div id="screen-meal" class="screen">
+  <div class="pb-nav">
+
+    <div class="bg-white px-4 pt-14 pb-4 border-b sticky top-0 z-10 shadow-sm flex items-center gap-3">
+      <button onclick="showScreen('home')" class="w-11 h-11 flex items-center justify-center rounded-full bg-gray-100 active:bg-gray-200 flex-shrink-0">
+        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+      </button>
+      <h1 class="text-xl font-bold text-gray-900">食事を記録</h1>
+    </div>
+
+    <div class="px-3 py-4 space-y-3">
+
+      <!-- Photo -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">写真</p>
+        <div id="photo-preview" class="hidden mb-3 relative">
+          <img id="photo-img" class="w-full h-52 object-cover rounded-xl">
+          <button onclick="removePhoto()"
+            class="absolute top-2 right-2 bg-black/50 text-white rounded-full w-8 h-8 flex items-center justify-center">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <label id="photo-label" class="flex flex-col items-center justify-center h-36 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer bg-gray-50 active:bg-gray-100 transition-colors">
+          <svg class="w-9 h-9 text-gray-300 mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"/>
+          </svg>
+          <span class="text-gray-400 text-sm font-medium">タップして撮影・選択</span>
+          <input type="file" accept="image/*" id="photo-input" class="hidden" onchange="handlePhoto(event)">
+        </label>
+      </div>
+
+      <!-- Memo -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">メモ</p>
+        <textarea id="meal-memo" rows="3" placeholder="例：親子丼・大盛り、コーヒー"
+          class="w-full border-2 border-gray-100 rounded-xl px-3 py-3 text-base focus:outline-none focus:border-blue-400 transition-colors resize-none bg-gray-50"></textarea>
+      </div>
+
+      <!-- Estimate Button -->
+      <button onclick="doEstimate()"
+        class="w-full bg-violet-500 active:bg-violet-600 text-white rounded-xl py-4 font-semibold flex items-center justify-center gap-2 text-base shadow-sm">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
+        </svg>
+        AIでカロリーを推定する
+      </button>
+
+      <!-- Estimate Result -->
+      <div id="estimate-result" class="hidden bg-white rounded-2xl p-4 shadow-sm border-2 border-violet-100">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-violet-500 text-lg">✨</span>
+          <p class="text-xs font-semibold text-violet-500 uppercase tracking-wide">推定結果</p>
+        </div>
+        <p id="est-description" class="text-gray-800 font-medium mb-1"></p>
+        <p id="est-note" class="text-gray-400 text-xs mb-4"></p>
+        <div class="flex items-center gap-3">
+          <span class="text-sm text-gray-600 flex-shrink-0">カロリー</span>
+          <input type="number" id="est-calories"
+            class="flex-1 border-2 border-gray-200 rounded-xl px-3 py-2.5 text-2xl font-bold text-center focus:outline-none focus:border-blue-400 transition-colors">
+          <span class="text-gray-500 flex-shrink-0">kcal</span>
+        </div>
+      </div>
+
+      <!-- Manual Calories -->
+      <div id="manual-section" class="bg-white rounded-2xl p-4 shadow-sm">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">カロリー（手動入力）</p>
+        <div class="flex items-center gap-3">
+          <input type="number" id="manual-calories" placeholder="0"
+            class="flex-1 border-2 border-gray-200 rounded-xl px-3 py-2.5 text-2xl font-bold text-center focus:outline-none focus:border-blue-400 transition-colors">
+          <span class="text-gray-500">kcal</span>
+        </div>
+      </div>
+
+      <!-- Save -->
+      <button onclick="saveMeal()"
+        class="w-full bg-blue-500 active:bg-blue-600 text-white rounded-xl py-4 font-semibold flex items-center justify-center gap-2 text-base shadow-sm">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+        </svg>
+        記録する
+      </button>
+
+      <div class="h-2"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== HISTORY SCREEN ===== -->
+<div id="screen-history" class="screen">
+  <div class="pb-nav">
+
+    <div class="bg-white px-4 pt-14 pb-4 border-b sticky top-0 z-10 shadow-sm flex justify-between items-center">
+      <h1 class="text-2xl font-bold text-gray-900">履歴</h1>
+      <button onclick="exportJSON()"
+        class="flex items-center gap-1.5 bg-gray-100 active:bg-gray-200 rounded-xl px-3 py-2 text-sm font-semibold text-gray-700">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+        </svg>
+        エクスポート
+      </button>
+    </div>
+
+    <div id="history-content" class="px-3 py-4"></div>
+  </div>
+</div>
+
+<!-- ===== SETTINGS SCREEN ===== -->
+<div id="screen-settings" class="screen">
+  <div class="pb-nav">
+
+    <div class="bg-white px-4 pt-14 pb-4 border-b sticky top-0 z-10 shadow-sm flex items-center gap-3">
+      <button onclick="showScreen('home')" class="w-11 h-11 flex items-center justify-center rounded-full bg-gray-100 active:bg-gray-200 flex-shrink-0">
+        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+      </button>
+      <h1 class="text-xl font-bold text-gray-900">設定</h1>
+    </div>
+
+    <div class="px-3 py-4 space-y-3">
+
+      <!-- Profile -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">プロフィール</p>
+        <div class="space-y-3">
+          <div class="flex items-center gap-3">
+            <label class="text-sm text-gray-700 w-28 flex-shrink-0">身長 (cm)</label>
+            <input type="number" id="s-height" class="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:border-blue-400 bg-gray-50">
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="text-sm text-gray-700 w-28 flex-shrink-0">年齢</label>
+            <input type="number" id="s-age" class="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:border-blue-400 bg-gray-50">
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="text-sm text-gray-700 w-28 flex-shrink-0">開始体重 (kg)</label>
+            <input type="number" id="s-start-weight" step="0.1" class="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:border-blue-400 bg-gray-50">
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="text-sm text-gray-700 w-28 flex-shrink-0">3ヶ月目標 (kg)</label>
+            <input type="number" id="s-target-3m" step="0.1" class="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:border-blue-400 bg-gray-50">
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="text-sm text-gray-700 w-28 flex-shrink-0">6ヶ月目標 (kg)</label>
+            <input type="number" id="s-target-6m" step="0.1" class="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:border-blue-400 bg-gray-50">
+          </div>
+        </div>
+      </div>
+
+      <!-- Targets -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">目標カロリー</p>
+        <div class="space-y-3">
+          <div class="flex items-center gap-3">
+            <label class="text-sm text-gray-700 w-28 flex-shrink-0">1日目標 (kcal)</label>
+            <input type="number" id="s-daily-kcal" class="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:border-blue-400 bg-gray-50">
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="text-sm text-gray-700 w-28 flex-shrink-0">週間目標 (kcal)</label>
+            <input type="number" id="s-weekly-kcal" class="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:border-blue-400 bg-gray-50">
+          </div>
+        </div>
+      </div>
+
+      <!-- Claude API Key -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Claude APIキー</p>
+        <input type="password" id="s-api-key" placeholder="sk-ant-..." autocomplete="off"
+          class="w-full border-2 border-gray-100 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:border-blue-400 bg-gray-50 mb-1">
+        <p class="text-xs text-gray-400">食事のカロリー推定に使用します</p>
+      </div>
+
+      <!-- Supabase -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <div class="flex justify-between items-center mb-3">
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Supabase（クラウド同期）</p>
+          <div id="s-sync-status" class="flex items-center gap-1"></div>
+        </div>
+        <div class="space-y-3">
+          <div>
+            <label class="text-xs text-gray-500 block mb-1">Project URL</label>
+            <input type="url" id="s-sb-url" placeholder="https://xxxx.supabase.co" autocomplete="off"
+              class="w-full border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-400 bg-gray-50">
+          </div>
+          <div>
+            <label class="text-xs text-gray-500 block mb-1">Anon Key</label>
+            <input type="password" id="s-sb-key" placeholder="eyJhbGci..." autocomplete="off"
+              class="w-full border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-400 bg-gray-50">
+          </div>
+        </div>
+        <button onclick="manualSync()" class="mt-3 w-full border-2 border-green-400 text-green-600 rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-2 active:bg-green-50">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/>
+          </svg>
+          今すぐ同期
+        </button>
+      </div>
+
+      <button onclick="saveSettings()" class="w-full bg-blue-500 active:bg-blue-600 text-white rounded-xl py-4 font-semibold text-base shadow-sm">
+        保存する
+      </button>
+
+      <div class="h-2"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== BOTTOM NAVIGATION ===== -->
+<nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-20 shadow-lg">
+  <div class="flex max-w-lg mx-auto">
+    <button onclick="showScreen('home')" id="nav-home"
+      class="flex-1 flex flex-col items-center py-2.5 gap-0.5 text-blue-500 transition-colors">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>
+      </svg>
+      <span class="text-xs font-semibold">ホーム</span>
+    </button>
+    <button onclick="showScreen('meal')" id="nav-meal"
+      class="flex-1 flex flex-col items-center py-2.5 gap-0.5 text-gray-400 transition-colors">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <span class="text-xs">記録</span>
+    </button>
+    <button onclick="showScreen('history')" id="nav-history"
+      class="flex-1 flex flex-col items-center py-2.5 gap-0.5 text-gray-400 transition-colors">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
+      </svg>
+      <span class="text-xs">履歴</span>
+    </button>
+  </div>
+</nav>
+
+<script>
+// ============================================================
+// CONSTANTS
+// ============================================================
+const STORAGE_KEY      = 'calorie_app_v2';
+const API_KEY_STORE    = 'claude_api_key';
+const SB_URL_STORE     = 'supabase_url';
+const SB_KEY_STORE     = 'supabase_anon_key';
+const OFFLINE_Q_KEY    = 'supabase_offline_queue';
+
+const DAY_JA    = ['日','月','火','水','木','金','土'];
+const WEEK_ORDER = ['土','日','月','火','水','木','金'];
+
+// ============================================================
+// STATE
+// ============================================================
+let appData      = null;
+let currentPhoto = null;   // { base64, mimeType }
+let sbClient     = null;   // Supabase client instance
+
+// ============================================================
+// DATA (localStorage)
+// ============================================================
+function defaultData() {
+  return {
+    profile: {
+      height_cm: 165, age: 37, start_weight_kg: 65.0,
+      target_kcal_daily: 1800, target_kcal_weekly: 12600,
+      target_weight_3m: 59.0, target_weight_6m: 56.0,
+      week_start_day: 'saturday'
+    },
+    records: {}
+  };
+}
+
+function loadData() {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return defaultData();
+}
+
+function saveLocal() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+}
+
+// ============================================================
+// DATE HELPERS
+// ============================================================
+function todayStr() { return fmtDate(new Date()); }
+
+function fmtDate(d) {
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+function pad(n) { return String(n).padStart(2,'0'); }
+
+function parseDate(s) {
+  const [y,m,d] = s.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+
+function weekSatStr(dateStr) {
+  const d = parseDate(dateStr);
+  const dow = d.getDay();
+  const back = dow === 6 ? 0 : dow + 1;
+  const sat = new Date(d);
+  sat.setDate(d.getDate() - back);
+  return fmtDate(sat);
+}
+
+function weekDates(weekStartStr) {
+  const out = [];
+  const base = parseDate(weekStartStr);
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(base);
+    d.setDate(base.getDate() + i);
+    out.push(fmtDate(d));
+  }
+  return out;
+}
+
+function weekId(weekStartStr) {
+  const d = parseDate(weekStartStr);
+  const jan1 = new Date(d.getFullYear(), 0, 1);
+  const wn = Math.ceil(((d - jan1) / 86400000 + jan1.getDay() + 1) / 7);
+  return `${d.getFullYear()}-W${pad(wn)}`;
+}
+
+function nowTime() {
+  const d = new Date();
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function uuid() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random()*16|0;
+    return (c==='x'?r:(r&3|8)).toString(16);
+  });
+}
+
+// ============================================================
+// RECORD HELPERS
+// ============================================================
+function getOrCreateRecord(dateStr) {
+  if (!appData.records[dateStr]) {
+    const ws = weekSatStr(dateStr);
+    appData.records[dateStr] = {
+      date: dateStr, weight_kg: null, steps: null,
+      week_id: weekId(ws), week_start: ws, meals: [], daily_total_kcal: 0
+    };
+  }
+  return appData.records[dateStr];
+}
+
+function recalcDay(dateStr) {
+  const r = appData.records[dateStr];
+  if (!r) return;
+  r.daily_total_kcal = r.meals.reduce((s, m) => s + (m.calories_estimated || 0), 0);
+}
+
+function weeklyTotal(weekStartStr) {
+  return weekDates(weekStartStr).reduce((s, d) =>
+    s + ((appData.records[d] || {}).daily_total_kcal || 0), 0);
+}
+
+// ============================================================
+// SUPABASE
+// ============================================================
+function getSbCreds() {
+  return {
+    url: localStorage.getItem(SB_URL_STORE) || '',
+    key: localStorage.getItem(SB_KEY_STORE) || ''
+  };
+}
+
+function initSbClient() {
+  const { url, key } = getSbCreds();
+  if (!url || !key) { sbClient = null; return; }
+  try {
+    sbClient = window.supabase.createClient(url, key);
+  } catch(e) {
+    sbClient = null;
+    console.error('Supabase init failed:', e);
+  }
+}
+
+// Convert local record → Supabase row (omit id; upsert on date)
+function recToRow(rec) {
+  return {
+    date:             rec.date,
+    weight_kg:        rec.weight_kg,
+    steps:            rec.steps,
+    week_id:          rec.week_id,
+    week_start:       rec.week_start,
+    daily_total_kcal: rec.daily_total_kcal,
+    meals:            rec.meals
+  };
+}
+
+// Convert Supabase row → local record shape
+function rowToRec(row) {
+  return {
+    date:             row.date,
+    weight_kg:        row.weight_kg,
+    steps:            row.steps,
+    week_id:          row.week_id,
+    week_start:       row.week_start,
+    daily_total_kcal: row.daily_total_kcal || 0,
+    meals:            row.meals || []
+  };
+}
+
+// Offline queue helpers
+function getQueue() {
+  try { return new Set(JSON.parse(localStorage.getItem(OFFLINE_Q_KEY)) || []); }
+  catch(e) { return new Set(); }
+}
+function enqueue(dateStr) {
+  const q = getQueue(); q.add(dateStr);
+  localStorage.setItem(OFFLINE_Q_KEY, JSON.stringify([...q]));
+}
+function dequeue(dateStr) {
+  const q = getQueue(); q.delete(dateStr);
+  localStorage.setItem(OFFLINE_Q_KEY, JSON.stringify([...q]));
+}
+
+// Upsert one record. Falls back to offline queue on failure.
+async function upsertRecord(dateStr) {
+  const rec = appData.records[dateStr];
+  if (!rec) return;
+
+  if (!sbClient || !navigator.onLine) {
+    enqueue(dateStr);
+    updateSyncBadge('offline');
+    return;
+  }
+
+  try {
+    const { error } = await sbClient
+      .from('records')
+      .upsert(recToRow(rec), { onConflict: 'date' });
+    if (error) throw error;
+    dequeue(dateStr);
+    updateSyncBadge('synced');
+  } catch(e) {
+    console.error('upsert failed:', e);
+    enqueue(dateStr);
+    updateSyncBadge('offline');
+  }
+}
+
+// Pull all rows from Supabase → merge into appData (Supabase wins on conflict)
+async function syncFromSupabase() {
+  if (!sbClient || !navigator.onLine) return;
+  updateSyncBadge('syncing');
+  try {
+    const { data, error } = await sbClient.from('records').select('*');
+    if (error) throw error;
+    if (data) {
+      data.forEach(row => { appData.records[row.date] = rowToRec(row); });
+      saveLocal();
+    }
+    updateSyncBadge('synced');
+  } catch(e) {
+    console.error('sync failed:', e);
+    updateSyncBadge('error');
+    toast('データ同期に失敗しました（オフラインモード）', 3500);
+  }
+}
+
+// Push all queued local changes to Supabase
+async function flushQueue() {
+  if (!sbClient || !navigator.onLine) return;
+  const q = getQueue();
+  if (!q.size) return;
+  for (const dateStr of q) {
+    const rec = appData.records[dateStr];
+    if (!rec) { dequeue(dateStr); continue; }
+    try {
+      const { error } = await sbClient
+        .from('records')
+        .upsert(recToRow(rec), { onConflict: 'date' });
+      if (!error) dequeue(dateStr);
+    } catch(e) { /* leave in queue */ }
+  }
+  if (!getQueue().size) updateSyncBadge('synced');
+}
+
+// Called from settings "今すぐ同期" button
+async function manualSync() {
+  if (!sbClient) { toast('Supabaseが設定されていません'); return; }
+  toast('同期中...');
+  await flushQueue();
+  await syncFromSupabase();
+  renderHome();
+  toast('同期完了 ✓');
+}
+
+// ============================================================
+// SYNC STATUS BADGE
+// ============================================================
+const BADGE = {
+  syncing: `<svg class="w-3 h-3 spin" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg><span class="text-xs text-gray-400">同期中</span>`,
+  synced:  `<svg class="w-3 h-3 text-green-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span class="text-xs text-green-500">同期済み</span>`,
+  offline: `<svg class="w-3 h-3 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"/></svg><span class="text-xs text-amber-500">オフライン</span>`,
+  error:   `<svg class="w-3 h-3 text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg><span class="text-xs text-red-400">同期エラー</span>`,
+  none:    ''
+};
+
+function updateSyncBadge(state) {
+  const badge = document.getElementById('sync-badge');
+  if (badge) badge.innerHTML = sbClient ? (BADGE[state] || '') : BADGE.none;
+
+  // Also update settings screen status
+  const sBadge = document.getElementById('s-sync-status');
+  if (sBadge) sBadge.innerHTML = sbClient ? (BADGE[state] || '') : BADGE.none;
+}
+
+// ============================================================
+// MODAL / OVERLAY
+// ============================================================
+function showModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function hideModal(id) { document.getElementById(id).classList.add('hidden'); }
+function showLoading(msg) {
+  document.getElementById('loading-msg').textContent = msg || 'AI推定中...';
+  showModal('loading-overlay');
+}
+function hideLoading() { hideModal('loading-overlay'); }
+
+// ============================================================
+// TOAST
+// ============================================================
+let toastTimer = null;
+function toast(msg, ms = 2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.opacity = '1';
+  el.style.transform = 'translateY(0)';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(8px)';
+  }, ms);
+}
+
+// ============================================================
+// API KEY (Claude)
+// ============================================================
+function getApiKey() { return localStorage.getItem(API_KEY_STORE) || ''; }
+
+function saveApiKey() {
+  const val = document.getElementById('api-key-input').value.trim();
+  const errEl = document.getElementById('api-key-err');
+  if (!val) { errEl.classList.remove('hidden'); return; }
+  errEl.classList.add('hidden');
+  localStorage.setItem(API_KEY_STORE, val);
+  hideModal('modal-api');
+  toast('APIキーを保存しました ✓');
+  // Chain to Supabase modal if not configured
+  if (!getSbCreds().url) showModal('modal-supabase');
+}
+
+// ============================================================
+// SUPABASE CONFIG MODAL
+// ============================================================
+function saveSupabaseConfig() {
+  const url = document.getElementById('sb-url-input').value.trim();
+  const key = document.getElementById('sb-key-input').value.trim();
+  const errEl = document.getElementById('sb-err');
+  if (!url || !key) { errEl.classList.remove('hidden'); return; }
+  errEl.classList.add('hidden');
+  localStorage.setItem(SB_URL_STORE, url);
+  localStorage.setItem(SB_KEY_STORE, key);
+  hideModal('modal-supabase');
+  initSbClient();
+  toast('Supabaseに接続しています...');
+  syncFromSupabase().then(() => {
+    renderHome();
+    toast('クラウドと同期しました ✓');
+  });
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+
+  ['home','meal','history'].forEach(n => {
+    const btn = document.getElementById('nav-' + n);
+    if (!btn) return;
+    const active = n === name;
+    btn.classList.toggle('text-blue-500', active);
+    btn.classList.toggle('text-gray-400', !active);
+    btn.querySelector('span').classList.toggle('font-semibold', active);
+  });
+
+  window.scrollTo(0, 0);
+
+  if (name === 'home')     renderHome();
+  if (name === 'history')  renderHistory();
+  if (name === 'settings') loadSettings();
+  if (name === 'meal')     resetMealForm();
+}
+
+// ============================================================
+// HOME SCREEN
+// ============================================================
+function renderHome() {
+  const today = todayStr();
+  const d = parseDate(today);
+  document.getElementById('home-datestr').textContent =
+    `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${DAY_JA[d.getDay()]}）`;
+
+  const rec = getOrCreateRecord(today);
+  document.getElementById('input-weight').value = rec.weight_kg !== null ? rec.weight_kg : '';
+  document.getElementById('input-steps').value  = rec.steps     !== null ? rec.steps     : '';
+
+  const dailyTarget  = appData.profile.target_kcal_daily;
+  const weeklyTarget = appData.profile.target_kcal_weekly;
+  const ws    = weekSatStr(today);
+  const daily  = rec.daily_total_kcal;
+  const weekly = weeklyTotal(ws);
+
+  const dnEl = document.getElementById('home-daily-num');
+  dnEl.textContent = daily.toLocaleString();
+  dnEl.className = `text-3xl font-bold tabular-nums ${daily > dailyTarget ? 'text-red-500' : 'text-gray-900'}`;
+  const dbEl = document.getElementById('home-daily-bar');
+  dbEl.style.width = Math.min(daily / dailyTarget * 100, 100) + '%';
+  dbEl.className = `h-full rounded-full transition-all duration-500 ${daily > dailyTarget ? 'bg-red-400' : 'bg-blue-400'}`;
+
+  const wnEl = document.getElementById('home-weekly-num');
+  wnEl.textContent = weekly.toLocaleString();
+  wnEl.className = `text-3xl font-bold tabular-nums ${weekly > weeklyTarget ? 'text-red-500' : 'text-gray-900'}`;
+  const wbEl = document.getElementById('home-weekly-bar');
+  wbEl.style.width = Math.min(weekly / weeklyTarget * 100, 100) + '%';
+  wbEl.className = `h-full rounded-full transition-all duration-500 ${weekly > weeklyTarget ? 'bg-red-400' : 'bg-blue-400'}`;
+
+  document.getElementById('home-alert').classList.toggle('hidden', daily <= 2000);
+
+  renderChart(ws, today, weekly > weeklyTarget);
+  renderHomeMeals(rec);
+}
+
+function renderChart(weekStartStr, today, weeklyOver) {
+  const dates      = weekDates(weekStartStr);
+  const dailyTarget = appData.profile.target_kcal_daily;
+  const kcals      = dates.map(d => (appData.records[d] || {}).daily_total_kcal || 0);
+  const maxVal     = Math.max(...kcals, dailyTarget, 100);
+  const CHART_H    = 96;
+
+  let html = `<div class="relative" style="height:${CHART_H + 28}px">`;
+  html += `<div class="absolute left-0 right-0 flex items-center" style="bottom:${28 + dailyTarget/maxVal*CHART_H}px;z-index:1;">
+    <div class="flex-1 border-t-2 border-dashed border-orange-300"></div>
+    <span class="text-xs text-orange-400 ml-1 leading-none">目標</span>
+  </div>`;
+  html += `<div class="absolute bottom-7 left-0 right-0 flex items-end gap-1" style="height:${CHART_H}px;">`;
+  dates.forEach((date, i) => {
+    const kcal  = kcals[i];
+    const barH  = kcal > 0 ? Math.max(kcal / maxVal * CHART_H, 3) : 0;
+    const isToday = date === today;
+    const isOver  = kcal > dailyTarget;
+    const color   = weeklyOver ? 'bg-red-400' : isOver ? 'bg-orange-400' : isToday ? 'bg-blue-500' : 'bg-blue-200';
+    const ring    = isToday ? 'ring-2 ring-blue-500 ring-offset-1' : '';
+    html += `<div class="flex-1 flex flex-col items-center justify-end" style="height:${CHART_H}px;">
+      <div class="${color} ${ring} w-full rounded-t transition-all" style="height:${barH}px;"></div>
+    </div>`;
+  });
+  html += `</div><div class="absolute bottom-0 left-0 right-0 flex" style="height:24px;">`;
+  WEEK_ORDER.forEach((label, i) => {
+    const isToday = dates[i] === today;
+    html += `<div class="flex-1 text-center text-xs leading-6 ${isToday ? 'text-blue-600 font-bold' : 'text-gray-400'}">${label}</div>`;
+  });
+  html += `</div></div>`;
+  document.getElementById('weekly-chart').innerHTML = html;
+}
+
+function renderHomeMeals(rec) {
+  const el = document.getElementById('home-meals');
+  if (!rec.meals.length) {
+    el.innerHTML = '<p class="text-gray-400 text-sm text-center py-3">まだ記録がありません</p>';
+    return;
+  }
+  el.innerHTML = rec.meals.map(m => `
+    <div class="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
+      <div class="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-400">
+        ${m.has_photo
+          ? `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/></svg>`
+          : `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>`
+        }
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-medium text-gray-800 truncate">${esc(m.description || m.memo || '食事')}</p>
+        <p class="text-xs text-gray-400">${m.time}</p>
+      </div>
+      <span class="text-base font-bold text-gray-700 flex-shrink-0">${m.calories_estimated.toLocaleString()} kcal</span>
+      <button onclick="deleteMeal('${m.id}')"
+        class="w-7 h-7 flex items-center justify-center rounded-full bg-red-50 active:bg-red-100 text-red-400 flex-shrink-0">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+  `).join('');
+}
+
+function deleteMeal(id) {
+  const today = todayStr();
+  const rec = getOrCreateRecord(today);
+  rec.meals = rec.meals.filter(m => m.id !== id);
+  recalcDay(today);
+  saveLocal();
+  upsertRecord(today);
+  renderHome();
+}
+
+function saveTodayMeasurement() {
+  const today = todayStr();
+  const rec   = getOrCreateRecord(today);
+  const w = parseFloat(document.getElementById('input-weight').value);
+  const s = parseInt(document.getElementById('input-steps').value);
+  rec.weight_kg = isNaN(w) ? null : +w.toFixed(1);
+  rec.steps     = isNaN(s) ? null : s;
+  saveLocal();
+  upsertRecord(today);
+}
+
+// ============================================================
+// MEAL SCREEN
+// ============================================================
+function resetMealForm() {
+  currentPhoto = null;
+  document.getElementById('photo-input').value = '';
+  document.getElementById('photo-preview').classList.add('hidden');
+  document.getElementById('photo-label').classList.remove('hidden');
+  document.getElementById('meal-memo').value = '';
+  document.getElementById('estimate-result').classList.add('hidden');
+  document.getElementById('manual-section').classList.remove('hidden');
+  document.getElementById('manual-calories').value = '';
+  document.getElementById('est-calories').value = '';
+  document.getElementById('est-description').textContent = '';
+  document.getElementById('est-note').textContent = '';
+}
+
+function handlePhoto(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const dataUrl = ev.target.result;
+    const [, b64] = dataUrl.split(',');
+    currentPhoto = { base64: b64, mimeType: file.type || 'image/jpeg' };
+    document.getElementById('photo-img').src = dataUrl;
+    document.getElementById('photo-preview').classList.remove('hidden');
+    document.getElementById('photo-label').classList.add('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+
+function removePhoto() {
+  currentPhoto = null;
+  document.getElementById('photo-input').value = '';
+  document.getElementById('photo-preview').classList.add('hidden');
+  document.getElementById('photo-label').classList.remove('hidden');
+}
+
+async function doEstimate() {
+  const apiKey = getApiKey();
+  if (!apiKey) { showModal('modal-api'); return; }
+  const memo = document.getElementById('meal-memo').value.trim();
+  if (!currentPhoto && !memo) { toast('写真またはメモを入力してください'); return; }
+
+  showLoading('AI推定中...');
+  try {
+    const content = [];
+    if (currentPhoto) {
+      content.push({ type: 'image', source: { type: 'base64', media_type: currentPhoto.mimeType, data: currentPhoto.base64 } });
+    }
+    content.push({ type: 'text', text: memo || '画像の食事のカロリーを推定してください' });
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6', max_tokens: 512,
+        system: 'あなたは食事のカロリー推定の専門家です。写真とメモから食事内容を特定し、カロリーを推定してください。以下のJSON形式のみで返答してください。前置きは不要です。{"description": "食事の説明（日本語・簡潔に）","calories": 数値のみ,"note": "推定の根拠や注意点（任意）"}',
+        messages: [{ role: 'user', content }]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const text = data.content[0].text;
+    let result;
+    try {
+      const m = text.match(/\{[\s\S]*\}/);
+      result = JSON.parse(m ? m[0] : text);
+    } catch(e) { throw new Error('レスポンスの解析に失敗しました'); }
+
+    document.getElementById('est-description').textContent = result.description || '';
+    document.getElementById('est-note').textContent = result.note || '';
+    document.getElementById('est-calories').value = result.calories || 0;
+    document.getElementById('estimate-result').classList.remove('hidden');
+    document.getElementById('manual-section').classList.add('hidden');
+    toast('推定完了！数値を確認してください ✨');
+  } catch(e) {
+    toast('エラー: ' + e.message, 4000);
+  } finally {
+    hideLoading();
+  }
+}
+
+function saveMeal() {
+  const estResult = document.getElementById('estimate-result');
+  const calories = !estResult.classList.contains('hidden')
+    ? parseInt(document.getElementById('est-calories').value) || 0
+    : parseInt(document.getElementById('manual-calories').value) || 0;
+
+  if (calories <= 0) { toast('カロリーを入力してください'); return; }
+
+  const memo = document.getElementById('meal-memo').value.trim();
+  const desc = document.getElementById('est-description').textContent || memo || '食事';
+
+  const today = todayStr();
+  const rec   = getOrCreateRecord(today);
+  rec.meals.push({
+    id: uuid(), time: nowTime(), description: desc,
+    calories_estimated: calories, memo: memo, has_photo: !!currentPhoto
+  });
+  recalcDay(today);
+  saveLocal();
+  upsertRecord(today);
+  toast('記録しました ✓');
+  showScreen('home');
+}
+
+// ============================================================
+// HISTORY SCREEN
+// ============================================================
+function renderHistory() {
+  const el      = document.getElementById('history-content');
+  const records = Object.values(appData.records);
+  if (!records.length) {
+    el.innerHTML = '<p class="text-gray-400 text-center py-12">まだ記録がありません</p>';
+    return;
+  }
+
+  const weeks = {};
+  records.forEach(r => {
+    const ws = r.week_start || weekSatStr(r.date);
+    if (!weeks[ws]) weeks[ws] = [];
+    weeks[ws].push(r);
+  });
+
+  const today       = todayStr();
+  const sortedWeeks = Object.keys(weeks).sort((a,b) => b.localeCompare(a));
+
+  let html = '';
+  sortedWeeks.forEach(ws => {
+    const recs   = weeks[ws].sort((a,b) => b.date.localeCompare(a.date));
+    const wTotal = recs.reduce((s,r) => s + r.daily_total_kcal, 0);
+    const wOver  = wTotal > appData.profile.target_kcal_weekly;
+    const wEnd   = weekDates(ws)[6];
+    const wsD    = parseDate(ws), weD = parseDate(wEnd);
+    const label  = `${wsD.getMonth()+1}/${wsD.getDate()} – ${weD.getMonth()+1}/${weD.getDate()}`;
+
+    html += `<div class="mb-5">
+      <div class="flex justify-between items-center px-1 mb-2">
+        <span class="text-sm font-bold text-gray-700">📅 ${label}</span>
+        <span class="text-sm font-semibold ${wOver?'text-red-500':'text-gray-500'}">${wTotal.toLocaleString()} kcal</span>
+      </div>`;
+
+    recs.forEach(r => {
+      const d      = parseDate(r.date);
+      const isToday = r.date === today;
+      const isOver  = r.daily_total_kcal > appData.profile.target_kcal_daily;
+      html += `<div class="bg-white rounded-2xl p-4 mb-2 shadow-sm">
+        <div class="flex justify-between items-center mb-2">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-gray-800">${d.getMonth()+1}/${d.getDate()}（${DAY_JA[d.getDay()]}）</span>
+            ${isToday ? '<span class="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">今日</span>' : ''}
+          </div>
+          <span class="font-bold text-base ${isOver?'text-red-500':'text-gray-700'}">${r.daily_total_kcal.toLocaleString()} kcal</span>
+        </div>
+        <div class="flex gap-3 text-sm text-gray-500 mb-2">
+          ${r.weight_kg !== null ? `<span>⚖️ ${r.weight_kg}kg</span>` : ''}
+          ${r.steps     !== null ? `<span>👟 ${r.steps.toLocaleString()}歩</span>` : ''}
+        </div>`;
+      if (r.meals && r.meals.length) {
+        html += `<div class="border-t border-gray-50 pt-2 space-y-1">`;
+        r.meals.forEach(m => {
+          html += `<div class="flex justify-between items-center">
+            <span class="text-sm text-gray-700 flex-1 min-w-0 truncate">${m.time} ${esc(m.description || m.memo || '食事')}</span>
+            <span class="text-sm font-semibold text-gray-600 ml-2 flex-shrink-0">${m.calories_estimated.toLocaleString()} kcal</span>
+          </div>`;
+        });
+        html += `</div>`;
+      }
+      html += `</div>`;
+    });
+    html += `</div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function loadSettings() {
+  const p = appData.profile;
+  document.getElementById('s-height').value       = p.height_cm;
+  document.getElementById('s-age').value          = p.age;
+  document.getElementById('s-start-weight').value = p.start_weight_kg;
+  document.getElementById('s-target-3m').value    = p.target_weight_3m;
+  document.getElementById('s-target-6m').value    = p.target_weight_6m;
+  document.getElementById('s-daily-kcal').value   = p.target_kcal_daily;
+  document.getElementById('s-weekly-kcal').value  = p.target_kcal_weekly;
+  document.getElementById('s-api-key').value      = getApiKey();
+
+  const { url, key } = getSbCreds();
+  document.getElementById('s-sb-url').value = url;
+  document.getElementById('s-sb-key').value = key;
+
+  // Show current sync state
+  updateSyncBadge(sbClient ? (navigator.onLine ? 'synced' : 'offline') : 'none');
+}
+
+function saveSettings() {
+  const p  = appData.profile;
+  const g  = (id, fb) => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? fb : v; };
+  const gi = (id, fb) => { const v = parseInt(document.getElementById(id).value);   return isNaN(v) ? fb : v; };
+
+  p.height_cm       = g ('s-height',      p.height_cm);
+  p.age             = gi('s-age',         p.age);
+  p.start_weight_kg = g ('s-start-weight',p.start_weight_kg);
+  p.target_weight_3m= g ('s-target-3m',  p.target_weight_3m);
+  p.target_weight_6m= g ('s-target-6m',  p.target_weight_6m);
+  p.target_kcal_daily  = gi('s-daily-kcal', p.target_kcal_daily);
+  p.target_kcal_weekly = gi('s-weekly-kcal',p.target_kcal_weekly);
+
+  const apiKey = document.getElementById('s-api-key').value.trim();
+  if (apiKey) localStorage.setItem(API_KEY_STORE, apiKey);
+
+  // Supabase config
+  const sbUrl = document.getElementById('s-sb-url').value.trim();
+  const sbKey = document.getElementById('s-sb-key').value.trim();
+  const prevUrl = getSbCreds().url;
+  if (sbUrl) localStorage.setItem(SB_URL_STORE, sbUrl);
+  if (sbKey) localStorage.setItem(SB_KEY_STORE, sbKey);
+
+  saveLocal();
+
+  // Re-initialize Supabase if credentials changed
+  if (sbUrl && sbKey && sbUrl !== prevUrl) {
+    initSbClient();
+    syncFromSupabase().then(() => renderHome());
+  }
+
+  toast('設定を保存しました ✓');
+  showScreen('home');
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+function exportJSON() {
+  const blob  = new Blob([JSON.stringify(appData, null, 2)], { type: 'application/json' });
+  const d     = new Date();
+  const fname = `calorie_log_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.json`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fname;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+  toast(`${fname} をダウンロードしました`);
+}
+
+// ============================================================
+// UTIL
+// ============================================================
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ============================================================
+// INIT
+// ============================================================
+async function init() {
+  appData = loadData();
+
+  // Initialize Supabase (non-blocking)
+  initSbClient();
+
+  // Show modal chain: API key → Supabase (if needed)
+  if (!getApiKey()) {
+    showModal('modal-api');
+  } else if (!getSbCreds().url) {
+    showModal('modal-supabase');
+  }
+
+  // Render immediately from localStorage
+  showScreen('home');
+
+  // Background: sync from Supabase then flush offline queue
+  if (sbClient) {
+    await syncFromSupabase();
+    await flushQueue();
+    renderHome();
+  } else {
+    updateSyncBadge('none');
+  }
+
+  // Reconnect handler
+  window.addEventListener('online', async () => {
+    toast('オンラインに復帰しました ✓');
+    await flushQueue();
+    await syncFromSupabase();
+    renderHome();
+  });
+
+  window.addEventListener('offline', () => {
+    updateSyncBadge('offline');
+    toast('オフラインになりました（ローカルに保存します）');
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
