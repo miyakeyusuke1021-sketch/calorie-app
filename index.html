@@ -133,9 +133,12 @@
           <span class="text-sm text-gray-500">摂取カロリー</span>
           <span id="home-intake-num" class="text-base font-bold text-gray-800 tabular-nums">0 kcal</span>
         </div>
-        <div class="flex justify-between items-center">
-          <span class="text-sm text-gray-500">消費カロリー（運動）</span>
-          <span id="home-burned-num" class="text-base font-bold text-green-500 tabular-nums">0 kcal</span>
+        <div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm text-gray-500">消費カロリー</span>
+            <span id="home-burned-num" class="text-base font-bold text-green-500 tabular-nums">0 kcal</span>
+          </div>
+          <div id="home-burned-detail" class="hidden mt-1 space-y-0.5 pl-2"></div>
         </div>
       </div>
       <div class="border-t border-gray-100 pt-3 mb-3">
@@ -709,8 +712,13 @@ function getOrCreateRecord(dateStr) {
 function recalcDay(dateStr) {
   const r = appData.records[dateStr];
   if (!r) return;
-  r.daily_total_kcal      = r.meals.reduce((s, m) => s + (m.calories_estimated || 0), 0);
-  r.calories_burned_total = (r.exercises || []).reduce((s, e) => s + (e.calories_burned || 0), 0);
+  r.daily_total_kcal = r.meals.reduce((s, m) => s + (m.calories_estimated || 0), 0);
+
+  const weight   = r.weight_kg ?? appData.profile.start_weight_kg ?? 65;
+  const steps    = r.steps || 0;
+  const walkBurn = Math.floor(weight * steps * 0.0007);
+  const exBurn   = (r.exercises || []).reduce((s, e) => s + (e.calories_burned || 0), 0);
+  r.calories_burned_total = walkBurn + exBurn;
 }
 
 function weeklyTotal(weekStartStr) {
@@ -994,8 +1002,24 @@ function renderHome() {
   const net    = Math.max(0, intake - burned);
   const weekly = weeklyNetTotal(ws);
 
+  const weight   = rec.weight_kg ?? appData.profile.start_weight_kg ?? 65;
+  const steps    = rec.steps || 0;
+  const walkBurn = Math.floor(weight * steps * 0.0007);
+  const exBurn   = (rec.exercises || []).reduce((s, e) => s + (e.calories_burned || 0), 0);
+
   document.getElementById('home-intake-num').textContent = intake.toLocaleString() + ' kcal';
   document.getElementById('home-burned-num').textContent = burned.toLocaleString() + ' kcal';
+
+  const detailEl = document.getElementById('home-burned-detail');
+  const detailParts = [];
+  if (steps > 0) detailParts.push(`<span class="text-xs text-gray-400">🚶 ${steps.toLocaleString()}歩 → ${walkBurn.toLocaleString()} kcal</span>`);
+  if (exBurn > 0) detailParts.push(`<span class="text-xs text-gray-400">🏋️ 運動 → ${exBurn.toLocaleString()} kcal</span>`);
+  if (detailParts.length) {
+    detailEl.innerHTML = detailParts.join('');
+    detailEl.classList.remove('hidden');
+  } else {
+    detailEl.classList.add('hidden');
+  }
   document.getElementById('home-daily-target-label').textContent = `/ ${dailyTarget.toLocaleString()} kcal`;
 
   const dnEl = document.getElementById('home-daily-num');
@@ -1142,8 +1166,10 @@ function saveTodayMeasurement() {
   const s = parseInt(document.getElementById('input-steps').value);
   rec.weight_kg = isNaN(w) ? null : +w.toFixed(1);
   rec.steps     = isNaN(s) ? null : s;
+  recalcDay(today);
   saveLocal();
   upsertRecord(today);
+  renderHome();
 }
 
 // ============================================================
