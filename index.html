@@ -1235,36 +1235,150 @@ function renderHomeMeals(rec) {
     return;
   }
   el.innerHTML = rec.meals.map(m => `
-    <div class="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
-      <div class="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-400">
-        ${m.has_photo
-          ? `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/></svg>`
-          : `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>`
-        }
+    <div id="meal-row-${m.id}">
+      <div class="flex items-center gap-3 py-2.5 border-b border-gray-50">
+        <div class="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-400">
+          ${m.has_photo
+            ? `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/></svg>`
+            : `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>`
+          }
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium text-gray-800 truncate">${esc(m.description || m.memo || '食事')}</p>
+          <p class="text-xs text-gray-400">${m.time}</p>
+        </div>
+        <span class="text-base font-bold text-gray-700 flex-shrink-0">${m.calories_estimated.toLocaleString()} kcal</span>
+        <button onclick="toggleMealEdit('${m.id}', '${todayStr()}')"
+          class="w-7 h-7 flex items-center justify-center rounded-full bg-blue-50 active:bg-blue-100 text-blue-400 flex-shrink-0">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/>
+          </svg>
+        </button>
+        <button onclick="deleteMeal('${m.id}')"
+          class="w-7 h-7 flex items-center justify-center rounded-full bg-red-50 active:bg-red-100 text-red-400 flex-shrink-0">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
       </div>
-      <div class="flex-1 min-w-0">
-        <p class="text-sm font-medium text-gray-800 truncate">${esc(m.description || m.memo || '食事')}</p>
-        <p class="text-xs text-gray-400">${m.time}</p>
-      </div>
-      <span class="text-base font-bold text-gray-700 flex-shrink-0">${m.calories_estimated.toLocaleString()} kcal</span>
-      <button onclick="deleteMeal('${m.id}')"
-        class="w-7 h-7 flex items-center justify-center rounded-full bg-red-50 active:bg-red-100 text-red-400 flex-shrink-0">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-      </button>
+      ${mealEditHtml(m, todayStr())}
     </div>
   `).join('');
 }
 
-function deleteMeal(id) {
-  const today = todayStr();
-  const rec = getOrCreateRecord(today);
+function deleteMeal(id, date) {
+  const targetDate = date || todayStr();
+  const rec = getOrCreateRecord(targetDate);
   rec.meals = rec.meals.filter(m => m.id !== id);
-  recalcDay(today);
+  recalcDay(targetDate);
   saveLocal();
-  upsertRecord(today);
-  renderHome();
+  upsertRecord(targetDate);
+  if (targetDate === todayStr()) renderHome();
+  else renderHistory();
+}
+
+// ============================================================
+// MEAL EDIT (inline)
+// ============================================================
+function mealEditHtml(m, date) {
+  return `<div id="meal-edit-${m.id}" class="hidden bg-blue-50 rounded-xl p-3 mb-2 border border-blue-100">
+    <p class="text-xs font-semibold text-blue-500 mb-2">✏️ 食事を編集</p>
+    <input type="text" id="meal-edit-desc-${m.id}" value="${esc(m.description || m.memo || '')}" placeholder="食事名"
+      class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm mb-2 focus:outline-none focus:border-blue-400 bg-white">
+    <div class="flex items-center gap-2 mb-2">
+      <input type="number" id="meal-edit-kcal-${m.id}" value="${m.calories_estimated}"
+        class="flex-1 border-2 border-gray-200 rounded-xl px-3 py-2 text-xl font-bold text-center focus:outline-none focus:border-blue-400 bg-white">
+      <span class="text-gray-500 text-sm">kcal</span>
+    </div>
+    <div class="grid grid-cols-2 gap-1.5 mb-3">
+      <div class="flex items-center gap-1.5 bg-white rounded-xl px-3 py-1.5 border border-gray-200">
+        <span class="text-xs text-gray-500 flex-shrink-0">🥩 P</span>
+        <input type="number" id="meal-edit-p-${m.id}" step="0.1" value="${m.protein || 0}"
+          class="flex-1 bg-transparent text-sm font-bold text-gray-800 focus:outline-none min-w-0">
+        <span class="text-xs text-gray-400">g</span>
+      </div>
+      <div class="flex items-center gap-1.5 bg-white rounded-xl px-3 py-1.5 border border-gray-200">
+        <span class="text-xs text-gray-500 flex-shrink-0">🧈 F</span>
+        <input type="number" id="meal-edit-f-${m.id}" step="0.1" value="${m.fat || 0}"
+          class="flex-1 bg-transparent text-sm font-bold text-gray-800 focus:outline-none min-w-0">
+        <span class="text-xs text-gray-400">g</span>
+      </div>
+      <div class="flex items-center gap-1.5 bg-white rounded-xl px-3 py-1.5 border border-gray-200">
+        <span class="text-xs text-gray-500 flex-shrink-0">🍚 C</span>
+        <input type="number" id="meal-edit-c-${m.id}" step="0.1" value="${m.carbs || 0}"
+          class="flex-1 bg-transparent text-sm font-bold text-gray-800 focus:outline-none min-w-0">
+        <span class="text-xs text-gray-400">g</span>
+      </div>
+      <div class="flex items-center gap-1.5 bg-white rounded-xl px-3 py-1.5 border border-gray-200">
+        <span class="text-xs text-gray-500 flex-shrink-0">🥦 食繊</span>
+        <input type="number" id="meal-edit-fib-${m.id}" step="0.1" value="${m.fiber || 0}"
+          class="flex-1 bg-transparent text-sm font-bold text-gray-800 focus:outline-none min-w-0">
+        <span class="text-xs text-gray-400">g</span>
+      </div>
+      <div class="flex items-center gap-1.5 bg-white rounded-xl px-3 py-1.5 border border-gray-200 col-span-2">
+        <span class="text-xs text-gray-500 flex-shrink-0">🧂 塩分</span>
+        <input type="number" id="meal-edit-salt-${m.id}" step="0.1" value="${m.salt || 0}"
+          class="flex-1 bg-transparent text-sm font-bold text-gray-800 focus:outline-none min-w-0">
+        <span class="text-xs text-gray-400">g</span>
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="saveEditMeal('${m.id}', '${date}')"
+        class="flex-1 bg-blue-500 text-white rounded-lg py-2 text-sm font-semibold active:bg-blue-600">保存</button>
+      <button onclick="cancelMealEdit('${m.id}')"
+        class="flex-1 border border-gray-200 text-gray-500 rounded-lg py-2 text-sm active:bg-gray-50">キャンセル</button>
+    </div>
+  </div>`;
+}
+
+function toggleMealEdit(id, date) {
+  const editEl = document.getElementById('meal-edit-' + id);
+  if (!editEl) return;
+  editEl.classList.toggle('hidden');
+  if (!editEl.classList.contains('hidden')) {
+    const input = document.getElementById('meal-edit-desc-' + id);
+    if (input) input.focus();
+  }
+}
+
+function cancelMealEdit(id) {
+  const editEl = document.getElementById('meal-edit-' + id);
+  if (editEl) editEl.classList.add('hidden');
+}
+
+function saveEditMeal(id, date) {
+  const rec = appData.records[date];
+  if (!rec) return;
+  const meal = rec.meals.find(m => m.id === id);
+  if (!meal) return;
+
+  const descEl = document.getElementById('meal-edit-desc-' + id);
+  const kcalEl = document.getElementById('meal-edit-kcal-' + id);
+  const pEl    = document.getElementById('meal-edit-p-' + id);
+  const fEl    = document.getElementById('meal-edit-f-' + id);
+  const cEl    = document.getElementById('meal-edit-c-' + id);
+  const fibEl  = document.getElementById('meal-edit-fib-' + id);
+  const saltEl = document.getElementById('meal-edit-salt-' + id);
+
+  const newKcal = parseInt(kcalEl?.value) || 0;
+  if (newKcal <= 0) { toast('カロリーを入力してください'); return; }
+
+  meal.description        = descEl?.value.trim() || meal.description;
+  meal.memo               = meal.description;
+  meal.calories_estimated = newKcal;
+  meal.protein            = parseFloat(pEl?.value)    || 0;
+  meal.fat                = parseFloat(fEl?.value)    || 0;
+  meal.carbs              = parseFloat(cEl?.value)    || 0;
+  meal.fiber              = parseFloat(fibEl?.value)  || 0;
+  meal.salt               = parseFloat(saltEl?.value) || 0;
+
+  recalcDay(date);
+  saveLocal();
+  upsertRecord(date);
+  toast('食事を更新しました ✓');
+
+  if (date === todayStr()) renderHome();
+  else renderHistory();
 }
 
 function renderHomeExercises(rec) {
@@ -1715,9 +1829,24 @@ async function renderHistory() {
       if (r.meals && r.meals.length) {
         html += `<div class="border-t border-gray-50 pt-2 space-y-1">`;
         r.meals.forEach(m => {
-          html += `<div class="flex justify-between items-center">
-            <span class="text-sm text-gray-700 flex-1 min-w-0 truncate">${m.time} ${esc(m.description || m.memo || '食事')}</span>
-            <span class="text-sm font-semibold text-gray-600 ml-2 flex-shrink-0">${m.calories_estimated.toLocaleString()} kcal</span>
+          html += `<div id="meal-row-${m.id}">
+            <div class="flex items-center gap-2 py-1">
+              <span class="text-sm text-gray-700 flex-1 min-w-0 truncate">${m.time} ${esc(m.description || m.memo || '食事')}</span>
+              <span class="text-sm font-semibold text-gray-600 flex-shrink-0">${m.calories_estimated.toLocaleString()} kcal</span>
+              <button onclick="toggleMealEdit('${m.id}', '${r.date}')"
+                class="w-6 h-6 flex items-center justify-center rounded-full bg-blue-50 active:bg-blue-100 text-blue-400 flex-shrink-0">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/>
+                </svg>
+              </button>
+              <button onclick="deleteMeal('${m.id}', '${r.date}')"
+                class="w-6 h-6 flex items-center justify-center rounded-full bg-red-50 active:bg-red-100 text-red-400 flex-shrink-0">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+            ${mealEditHtml(m, r.date)}
           </div>`;
         });
         html += `</div>`;
