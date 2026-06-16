@@ -173,6 +173,20 @@
       <div id="weekly-chart"></div>
     </div>
 
+    <!-- Nutrition Dashboard -->
+    <div id="home-nutrition-card" class="mx-3 mt-3 bg-white rounded-2xl p-4 shadow-sm hidden">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">今日の栄養素</p>
+      <div class="flex items-center gap-4 mb-4">
+        <svg id="home-pfc-chart" width="80" height="80" viewBox="0 0 80 80" class="flex-shrink-0"></svg>
+        <div class="text-xs text-gray-500 space-y-1.5">
+          <div class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-400 flex-shrink-0"></span><span>タンパク質 (P)</span></div>
+          <div class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-full bg-yellow-400 flex-shrink-0"></span><span>脂質 (F)</span></div>
+          <div class="flex items-center gap-1.5"><span class="inline-block w-2.5 h-2.5 rounded-full bg-orange-400 flex-shrink-0"></span><span>炭水化物 (C)</span></div>
+        </div>
+      </div>
+      <div id="home-nutrition-bars" class="space-y-2.5"></div>
+    </div>
+
     <!-- Today's Meals -->
     <div class="mx-3 mt-3 bg-white rounded-2xl p-4 shadow-sm">
       <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">今日の食事</p>
@@ -281,12 +295,44 @@
           <p class="text-xs font-semibold text-violet-500 uppercase tracking-wide">推定結果</p>
         </div>
         <p id="est-description" class="text-gray-800 font-medium mb-1"></p>
-        <p id="est-note" class="text-gray-400 text-xs mb-4"></p>
-        <div class="flex items-center gap-3">
+        <p id="est-note" class="text-gray-400 text-xs mb-2"></p>
+        <div class="flex items-center gap-3 mb-3">
           <span class="text-sm text-gray-600 flex-shrink-0">カロリー</span>
           <input type="number" id="est-calories"
             class="flex-1 border-2 border-gray-200 rounded-xl px-3 py-2.5 text-2xl font-bold text-center focus:outline-none focus:border-blue-400 transition-colors">
           <span class="text-gray-500 flex-shrink-0">kcal</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
+            <span class="text-xs text-gray-500 flex-shrink-0">🥩 P</span>
+            <input type="number" id="est-protein" step="0.1" placeholder="0"
+              class="flex-1 bg-transparent text-sm font-bold text-gray-800 focus:outline-none min-w-0">
+            <span class="text-xs text-gray-400 flex-shrink-0">g</span>
+          </div>
+          <div class="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
+            <span class="text-xs text-gray-500 flex-shrink-0">🧈 F</span>
+            <input type="number" id="est-fat" step="0.1" placeholder="0"
+              class="flex-1 bg-transparent text-sm font-bold text-gray-800 focus:outline-none min-w-0">
+            <span class="text-xs text-gray-400 flex-shrink-0">g</span>
+          </div>
+          <div class="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
+            <span class="text-xs text-gray-500 flex-shrink-0">🍚 C</span>
+            <input type="number" id="est-carbs" step="0.1" placeholder="0"
+              class="flex-1 bg-transparent text-sm font-bold text-gray-800 focus:outline-none min-w-0">
+            <span class="text-xs text-gray-400 flex-shrink-0">g</span>
+          </div>
+          <div class="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
+            <span class="text-xs text-gray-500 flex-shrink-0">🥦 食繊</span>
+            <input type="number" id="est-fiber" step="0.1" placeholder="0"
+              class="flex-1 bg-transparent text-sm font-bold text-gray-800 focus:outline-none min-w-0">
+            <span class="text-xs text-gray-400 flex-shrink-0">g</span>
+          </div>
+          <div class="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 col-span-2">
+            <span class="text-xs text-gray-500 flex-shrink-0">🧂 塩分</span>
+            <input type="number" id="est-salt" step="0.1" placeholder="0"
+              class="flex-1 bg-transparent text-sm font-bold text-gray-800 focus:outline-none min-w-0">
+            <span class="text-xs text-gray-400 flex-shrink-0">g</span>
+          </div>
         </div>
       </div>
 
@@ -513,6 +559,33 @@
         </div>
       </div>
 
+      <!-- Nutrition Targets -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">栄養素目標（1日）</p>
+        <div class="space-y-3">
+          <div class="flex items-center gap-3">
+            <label class="text-sm text-gray-700 w-32 flex-shrink-0">🥩 タンパク質 (g)</label>
+            <input type="number" id="s-protein" step="1" class="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:border-blue-400 bg-gray-50">
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="text-sm text-gray-700 w-32 flex-shrink-0">🧈 脂質 (g)</label>
+            <input type="number" id="s-fat" step="1" class="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:border-blue-400 bg-gray-50">
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="text-sm text-gray-700 w-32 flex-shrink-0">🍚 炭水化物 (g)</label>
+            <input type="number" id="s-carbs" step="1" class="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:border-blue-400 bg-gray-50">
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="text-sm text-gray-700 w-32 flex-shrink-0">🥦 食物繊維 (g)</label>
+            <input type="number" id="s-fiber" step="0.5" class="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:border-blue-400 bg-gray-50">
+          </div>
+          <div class="flex items-center gap-3">
+            <label class="text-sm text-gray-700 w-32 flex-shrink-0">🧂 塩分 (g)</label>
+            <input type="number" id="s-salt" step="0.1" class="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:border-blue-400 bg-gray-50">
+          </div>
+        </div>
+      </div>
+
       <!-- Claude API Key -->
       <div class="bg-white rounded-2xl p-4 shadow-sm">
         <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Claude APIキー</p>
@@ -621,7 +694,8 @@ function defaultData() {
       height_cm: 165, age: 37, start_weight_kg: 65.0,
       target_kcal_daily: 1800, target_kcal_weekly: 12600,
       target_weight_3m: 59.0, target_weight_6m: 56.0,
-      week_start_day: 'saturday'
+      week_start_day: 'saturday',
+      target_protein: 130, target_fat: 50, target_carbs: 180, target_fiber: 21, target_salt: 7.5
     },
     records: {}
   };
@@ -1039,9 +1113,74 @@ function renderHome() {
   document.getElementById('home-alert').classList.toggle('hidden', net <= dailyTarget);
 
   renderChart(ws, today, weekly > weeklyTarget);
+  renderNutritionDashboard(rec);
   renderHomeMeals(rec);
   renderHomeExercises(rec);
   loadTodayMemo();
+}
+
+function renderPfcChart(protein, fat, carbs) {
+  const pCal = protein * 4, fCal = fat * 9, cCal = carbs * 4;
+  const total = pCal + fCal + cCal;
+  const el = document.getElementById('home-pfc-chart');
+  if (!el) return;
+  if (total === 0) { el.innerHTML = '<circle cx="40" cy="40" r="30" fill="#e5e7eb"/>'; return; }
+  const vals   = [pCal, fCal, cCal];
+  const colors = ['#60a5fa', '#facc15', '#fb923c'];
+  const nonZero = vals.filter(v => v > 0);
+  if (nonZero.length === 1) {
+    const i = vals.findIndex(v => v > 0);
+    el.innerHTML = `<circle cx="40" cy="40" r="36" fill="${colors[i]}"/><circle cx="40" cy="40" r="18" fill="white"/>`;
+    return;
+  }
+  const cx = 40, cy = 40, r = 36, ir = 18;
+  let angle = -Math.PI / 2, paths = '';
+  vals.forEach((v, i) => {
+    if (v <= 0) return;
+    const sweep = (v / total) * 2 * Math.PI;
+    const end = angle + sweep;
+    const cos1 = Math.cos(angle), sin1 = Math.sin(angle);
+    const cos2 = Math.cos(end),   sin2 = Math.sin(end);
+    const large = sweep > Math.PI ? 1 : 0;
+    paths += `<path d="M${cx+ir*cos1},${cy+ir*sin1} L${cx+r*cos1},${cy+r*sin1} A${r},${r} 0 ${large},1 ${cx+r*cos2},${cy+r*sin2} L${cx+ir*cos2},${cy+ir*sin2} A${ir},${ir} 0 ${large},0 ${cx+ir*cos1},${cy+ir*sin1}Z" fill="${colors[i]}"/>`;
+    angle = end;
+  });
+  el.innerHTML = paths;
+}
+
+function renderNutritionDashboard(rec) {
+  const card = document.getElementById('home-nutrition-card');
+  if (!card) return;
+  const meals = rec.meals || [];
+  const totalP = meals.reduce((s, m) => s + (m.protein || 0), 0);
+  const totalF = meals.reduce((s, m) => s + (m.fat     || 0), 0);
+  const totalC = meals.reduce((s, m) => s + (m.carbs   || 0), 0);
+  const totalFib = meals.reduce((s, m) => s + (m.fiber || 0), 0);
+  const totalSalt = meals.reduce((s, m) => s + (m.salt  || 0), 0);
+  if (totalP === 0 && totalF === 0 && totalC === 0) { card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+  renderPfcChart(totalP, totalF, totalC);
+  const p = appData.profile;
+  const bars = [
+    { icon: '🥩', label: 'タンパク質', value: totalP,    target: p.target_protein ?? 130, unit: 'g' },
+    { icon: '🧈', label: '脂質',       value: totalF,    target: p.target_fat     ?? 50,  unit: 'g' },
+    { icon: '🍚', label: '炭水化物',   value: totalC,    target: p.target_carbs   ?? 180, unit: 'g' },
+    { icon: '🥦', label: '食物繊維',   value: totalFib,  target: p.target_fiber   ?? 21,  unit: 'g' },
+    { icon: '🧂', label: '塩分',       value: totalSalt, target: p.target_salt    ?? 7.5, unit: 'g' },
+  ];
+  document.getElementById('home-nutrition-bars').innerHTML = bars.map(b => {
+    const pct  = b.target > 0 ? Math.min(100, b.value / b.target * 100) : 0;
+    const over = b.value > b.target;
+    return `<div>
+      <div class="flex justify-between items-center mb-1">
+        <span class="text-xs text-gray-600">${b.icon} ${b.label}</span>
+        <span class="text-xs font-semibold ${over ? 'text-red-500' : 'text-gray-700'} tabular-nums">${b.value.toFixed(1)}${b.unit} / ${b.target}${b.unit}</span>
+      </div>
+      <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+        <div class="${over ? 'bg-red-400' : 'bg-blue-400'} h-full rounded-full transition-all duration-500" style="width:${pct}%"></div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function renderChart(weekStartStr, today, weeklyOver) {
@@ -1186,6 +1325,11 @@ function resetMealForm() {
   document.getElementById('manual-section').classList.remove('hidden');
   document.getElementById('manual-calories').value = '';
   document.getElementById('est-calories').value = '';
+  document.getElementById('est-protein').value  = '';
+  document.getElementById('est-fat').value      = '';
+  document.getElementById('est-carbs').value    = '';
+  document.getElementById('est-fiber').value    = '';
+  document.getElementById('est-salt').value     = '';
   document.getElementById('est-description').textContent = '';
   document.getElementById('est-note').textContent = '';
 }
@@ -1236,7 +1380,7 @@ async function doEstimate() {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6', max_tokens: 512,
-        system: 'あなたは食事のカロリー推定の専門家です。写真とメモから食事内容を特定し、カロリーを推定してください。以下のJSON形式のみで返答してください。前置きは不要です。{"description": "食事の説明（日本語・簡潔に）","calories": 数値のみ,"note": "推定の根拠や注意点（任意）"}',
+        system: 'あなたは栄養士です。食事内容からカロリーと栄養素を推定し、必ずJSON形式のみで返してください。例：{"calories":650,"protein":25,"fat":18,"carbs":80,"fiber":4,"salt":2.1}',
         messages: [{ role: 'user', content }]
       })
     });
@@ -1254,9 +1398,18 @@ async function doEstimate() {
       result = JSON.parse(m ? m[0] : text);
     } catch(e) { throw new Error('レスポンスの解析に失敗しました'); }
 
-    document.getElementById('est-description').textContent = result.description || '';
-    document.getElementById('est-note').textContent = result.note || '';
+    const descEl = document.getElementById('est-description');
+    descEl.textContent = result.description || '';
+    descEl.style.display = result.description ? '' : 'none';
+    const noteEl = document.getElementById('est-note');
+    noteEl.textContent = result.note || '';
+    noteEl.style.display = result.note ? '' : 'none';
     document.getElementById('est-calories').value = result.calories || 0;
+    document.getElementById('est-protein').value = result.protein || 0;
+    document.getElementById('est-fat').value     = result.fat     || 0;
+    document.getElementById('est-carbs').value   = result.carbs   || 0;
+    document.getElementById('est-fiber').value   = result.fiber   || 0;
+    document.getElementById('est-salt').value    = result.salt    || 0;
     document.getElementById('estimate-result').classList.remove('hidden');
     document.getElementById('manual-section').classList.add('hidden');
     toast('推定完了！数値を確認してください ✨');
@@ -1277,12 +1430,18 @@ function saveMeal() {
 
   const memo = document.getElementById('meal-memo').value.trim();
   const desc = document.getElementById('est-description').textContent || memo || '食事';
+  const isEst = !estResult.classList.contains('hidden');
 
   const selectedDate = document.getElementById('meal-date').value || todayStr();
   const rec   = getOrCreateRecord(selectedDate);
   rec.meals.push({
     id: uuid(), time: nowTime(), description: desc,
-    calories_estimated: calories, memo: memo, has_photo: !!currentPhoto
+    calories_estimated: calories, memo: memo, has_photo: !!currentPhoto,
+    protein: isEst ? (parseFloat(document.getElementById('est-protein').value) || 0) : 0,
+    fat:     isEst ? (parseFloat(document.getElementById('est-fat').value)     || 0) : 0,
+    carbs:   isEst ? (parseFloat(document.getElementById('est-carbs').value)   || 0) : 0,
+    fiber:   isEst ? (parseFloat(document.getElementById('est-fiber').value)   || 0) : 0,
+    salt:    isEst ? (parseFloat(document.getElementById('est-salt').value)    || 0) : 0,
   });
   recalcDay(selectedDate);
   saveLocal();
@@ -1428,6 +1587,51 @@ function saveExercise() {
 // ============================================================
 // HISTORY SCREEN
 // ============================================================
+function historyMeasBadges(r) {
+  let html = '';
+  if (r.weight_kg !== null) html += `<span>⚖️ ${r.weight_kg}kg</span>`;
+  if (r.steps     !== null) html += `<span>👟 ${r.steps.toLocaleString()}歩</span>`;
+  return html;
+}
+
+function historyMeasHtml(r) {
+  const date = r.date;
+  return `<div class="flex gap-3 text-sm text-gray-500 mb-2 items-center flex-wrap">
+    <div id="history-meas-display-${date}" class="flex gap-3 items-center flex-wrap flex-1">
+      ${historyMeasBadges(r)}
+      <button onclick="toggleHistoryMeasEdit('${date}')"
+        class="text-xs text-blue-400 flex items-center gap-1 active:text-blue-600 ml-auto">
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z"/>
+        </svg>
+        体重・歩数を編集
+      </button>
+    </div>
+    <div id="history-meas-edit-${date}" class="hidden w-full">
+      <div class="flex gap-2 mb-2">
+        <div class="flex-1 flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 focus-within:border-blue-400">
+          <span class="text-xs text-gray-400 flex-shrink-0">⚖️</span>
+          <input type="number" id="history-meas-weight-${date}" step="0.1" placeholder="kg"
+            class="flex-1 bg-transparent text-sm font-bold text-gray-800 focus:outline-none min-w-0">
+          <span class="text-xs text-gray-400 flex-shrink-0">kg</span>
+        </div>
+        <div class="flex-1 flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 focus-within:border-blue-400">
+          <span class="text-xs text-gray-400 flex-shrink-0">👟</span>
+          <input type="number" id="history-meas-steps-${date}" step="1" placeholder="歩数"
+            class="flex-1 bg-transparent text-sm font-bold text-gray-800 focus:outline-none min-w-0">
+          <span class="text-xs text-gray-400 flex-shrink-0">歩</span>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="saveHistoryMeasurement('${date}')"
+          class="flex-1 bg-blue-500 text-white rounded-lg py-1.5 text-xs font-semibold active:bg-blue-600">保存</button>
+        <button onclick="cancelHistoryMeasEdit('${date}')"
+          class="flex-1 border border-gray-200 text-gray-500 rounded-lg py-1.5 text-xs active:bg-gray-50">キャンセル</button>
+      </div>
+    </div>
+  </div>`;
+}
+
 function historyMemoHtml(date) {
   const text = dayMemos[date] || '';
   const escaped = esc(text);
@@ -1498,10 +1702,7 @@ async function renderHistory() {
           </div>
           <span class="font-bold text-base ${isOver?'text-red-500':'text-gray-700'}">${r.daily_total_kcal.toLocaleString()} kcal</span>
         </div>
-        <div class="flex gap-3 text-sm text-gray-500 mb-2">
-          ${r.weight_kg !== null ? `<span>⚖️ ${r.weight_kg}kg</span>` : ''}
-          ${r.steps     !== null ? `<span>👟 ${r.steps.toLocaleString()}歩</span>` : ''}
-        </div>`;
+        ${historyMeasHtml(r)}
       if (r.meals && r.meals.length) {
         html += `<div class="border-t border-gray-50 pt-2 space-y-1">`;
         r.meals.forEach(m => {
@@ -1612,6 +1813,43 @@ function cancelHistoryMemoEdit(date) {
   document.getElementById('history-memo-edit-' + date).classList.add('hidden');
 }
 
+function toggleHistoryMeasEdit(date) {
+  document.getElementById('history-meas-display-' + date).classList.add('hidden');
+  const editEl = document.getElementById('history-meas-edit-' + date);
+  editEl.classList.remove('hidden');
+  const rec = appData.records[date];
+  if (rec) {
+    const wEl = document.getElementById('history-meas-weight-' + date);
+    const sEl = document.getElementById('history-meas-steps-' + date);
+    if (wEl) wEl.value = rec.weight_kg !== null ? rec.weight_kg : '';
+    if (sEl) sEl.value = rec.steps     !== null ? rec.steps     : '';
+  }
+}
+
+function cancelHistoryMeasEdit(date) {
+  document.getElementById('history-meas-display-' + date).classList.remove('hidden');
+  document.getElementById('history-meas-edit-' + date).classList.add('hidden');
+}
+
+function saveHistoryMeasurement(date) {
+  const rec = appData.records[date];
+  if (!rec) return;
+  const wVal = parseFloat(document.getElementById('history-meas-weight-' + date).value);
+  const sVal = parseInt(document.getElementById('history-meas-steps-' + date).value);
+  rec.weight_kg = isNaN(wVal) ? null : +wVal.toFixed(1);
+  rec.steps     = isNaN(sVal) ? null : sVal;
+  recalcDay(date);
+  saveLocal();
+  upsertRecord(date);
+  cancelHistoryMeasEdit(date);
+  // Update the display badges inline
+  const displayEl = document.getElementById('history-meas-display-' + date);
+  if (displayEl) {
+    displayEl.innerHTML = historyMeasBadges(rec);
+  }
+  toast('更新しました ✓');
+}
+
 // ============================================================
 // SETTINGS
 // ============================================================
@@ -1624,6 +1862,11 @@ function loadSettings() {
   document.getElementById('s-target-6m').value    = p.target_weight_6m;
   document.getElementById('s-daily-kcal').value   = p.target_kcal_daily;
   document.getElementById('s-weekly-kcal').value  = p.target_kcal_weekly;
+  document.getElementById('s-protein').value      = p.target_protein ?? 130;
+  document.getElementById('s-fat').value          = p.target_fat     ?? 50;
+  document.getElementById('s-carbs').value        = p.target_carbs   ?? 180;
+  document.getElementById('s-fiber').value        = p.target_fiber   ?? 21;
+  document.getElementById('s-salt').value         = p.target_salt    ?? 7.5;
   document.getElementById('s-api-key').value      = getApiKey();
 
   const { url, key } = getSbCreds();
@@ -1646,6 +1889,11 @@ function saveSettings() {
   p.target_weight_6m= g ('s-target-6m',  p.target_weight_6m);
   p.target_kcal_daily  = gi('s-daily-kcal', p.target_kcal_daily);
   p.target_kcal_weekly = gi('s-weekly-kcal',p.target_kcal_weekly);
+  p.target_protein     = g ('s-protein',    p.target_protein ?? 130);
+  p.target_fat         = g ('s-fat',        p.target_fat     ?? 50);
+  p.target_carbs       = g ('s-carbs',      p.target_carbs   ?? 180);
+  p.target_fiber       = g ('s-fiber',      p.target_fiber   ?? 21);
+  p.target_salt        = g ('s-salt',       p.target_salt    ?? 7.5);
 
   const apiKey = document.getElementById('s-api-key').value.trim();
   if (apiKey) localStorage.setItem(API_KEY_STORE, apiKey);
