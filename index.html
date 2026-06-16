@@ -1702,7 +1702,7 @@ async function renderHistory() {
           </div>
           <span class="font-bold text-base ${isOver?'text-red-500':'text-gray-700'}">${r.daily_total_kcal.toLocaleString()} kcal</span>
         </div>
-        ${historyMeasHtml(r)}
+        ${historyMeasHtml(r)}`;
       if (r.meals && r.meals.length) {
         html += `<div class="border-t border-gray-50 pt-2 space-y-1">`;
         r.meals.forEach(m => {
