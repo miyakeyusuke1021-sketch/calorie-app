@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>カロリー管理</title>
+  <title>自己管理</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <style>
@@ -123,6 +123,26 @@
           </div>
         </div>
       </div>
+      <div class="flex gap-3 mt-3">
+        <div class="flex-1">
+          <label class="text-xs text-gray-500 block mb-1.5">睡眠</label>
+          <div class="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:border-blue-400 focus-within:bg-white transition-colors">
+            <input type="number" id="input-sleep" step="0.5" min="0" max="24" placeholder="7.0"
+              class="flex-1 bg-transparent text-xl font-bold text-gray-900 focus:outline-none min-w-0"
+              onblur="saveTodayMeasurement()">
+            <span class="text-gray-400 text-sm ml-1 flex-shrink-0">時間</span>
+          </div>
+        </div>
+        <div class="flex-1">
+          <label class="text-xs text-gray-500 block mb-1.5">お酒</label>
+          <div class="flex gap-2">
+            <button id="alc-no" onclick="setAlcohol(false)"
+              class="flex-1 rounded-xl py-3 text-sm font-semibold border bg-gray-50 border-gray-200 text-gray-400">飲まない</button>
+            <button id="alc-yes" onclick="setAlcohol(true)"
+              class="flex-1 rounded-xl py-3 text-sm font-semibold border bg-gray-50 border-gray-200 text-gray-400">飲んだ</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Calorie Summary -->
@@ -203,8 +223,15 @@
 
     <!-- Today's Exercises -->
     <div class="mx-3 mt-3 bg-white rounded-2xl p-4 shadow-sm">
-      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">今日の運動</p>
+      <div class="flex justify-between items-baseline mb-3">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide">今日の運動・筋トレ</p>
+        <span id="home-train-week" class="text-xs text-gray-500"></span>
+      </div>
       <div id="home-exercises"></div>
+      <button onclick="showScreen('training')"
+        class="mt-3 w-full bg-indigo-500 active:bg-indigo-600 text-white rounded-xl py-3.5 font-semibold flex items-center justify-center gap-2">
+        💪 自重トレを記録する
+      </button>
       <button onclick="showScreen('exercise')"
         class="mt-3 w-full bg-green-500 active:bg-green-600 text-white rounded-xl py-3.5 font-semibold flex items-center justify-center gap-2">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
@@ -357,6 +384,66 @@
       </button>
 
       <div class="h-2"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TRAINING SCREEN ===== -->
+<div id="screen-training" class="screen">
+  <div class="pb-nav">
+
+    <div class="bg-white px-4 pt-14 pb-4 border-b sticky top-0 z-10 shadow-sm flex items-center gap-3">
+      <button onclick="showScreen('home')" class="w-11 h-11 flex items-center justify-center rounded-full bg-gray-100 active:bg-gray-200 flex-shrink-0">
+        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+      </button>
+      <h1 class="text-xl font-bold text-gray-900">自重トレを記録</h1>
+    </div>
+
+    <div class="px-3 py-4 space-y-3">
+
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">記録日付</p>
+        <input type="date" id="tr-date" onchange="onTrainDateChange()"
+          class="w-full border-2 border-gray-100 rounded-xl px-3 py-2.5 text-base focus:outline-none focus:border-indigo-400 bg-gray-50">
+      </div>
+
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">動作</p>
+        <div id="tr-patterns" class="grid grid-cols-4 gap-2"></div>
+        <div id="tr-exercises" class="mt-3 space-y-2"></div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">前回の記録</p>
+        <div id="tr-last" class="text-sm text-gray-600"></div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <p id="tr-sets-title" class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">セットごとの回数</p>
+        <div id="tr-sets" class="space-y-2"></div>
+        <div class="flex gap-2 mt-3">
+          <button onclick="addSetRow()" class="flex-1 border border-indigo-200 text-indigo-500 rounded-xl py-2.5 text-sm font-semibold active:bg-indigo-50">＋ セットを追加</button>
+          <button onclick="removeSetRow()" class="flex-1 border border-gray-200 text-gray-500 rounded-xl py-2.5 text-sm active:bg-gray-50">－ 最後を削除</button>
+        </div>
+        <p id="tr-kcal" class="text-xs text-gray-400 mt-3"></p>
+      </div>
+
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">メモ（任意）</p>
+        <textarea id="tr-memo" rows="2" placeholder="テンポ・きつさ・フォームの気づきなど"
+          class="w-full border-2 border-gray-100 rounded-xl px-3 py-3 text-base focus:outline-none focus:border-indigo-400 transition-colors resize-none bg-gray-50"></textarea>
+      </div>
+
+      <button onclick="saveTraining()"
+        class="w-full bg-indigo-500 active:bg-indigo-600 text-white rounded-xl py-4 font-bold text-base">記録する</button>
+
+      <div class="bg-white rounded-2xl p-4 shadow-sm">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">この日の筋トレ</p>
+        <div id="tr-today"></div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -647,6 +734,13 @@
       </svg>
       <span class="text-xs">食事</span>
     </button>
+    <button onclick="showScreen('training')" id="nav-training"
+      class="flex-1 flex flex-col items-center py-2.5 gap-0.5 text-gray-400 transition-colors">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/>
+      </svg>
+      <span class="text-xs">筋トレ</span>
+    </button>
     <button onclick="showScreen('exercise')" id="nav-exercise"
       class="flex-1 flex flex-col items-center py-2.5 gap-0.5 text-gray-400 transition-colors">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -778,7 +872,8 @@ function getOrCreateRecord(dateStr) {
     appData.records[dateStr] = {
       date: dateStr, weight_kg: null, steps: null,
       week_id: weekId(ws), week_start: ws, meals: [], daily_total_kcal: 0,
-      exercises: [], calories_burned_total: 0
+      exercises: [], calories_burned_total: 0,
+      sleep_hours: null, alcohol: null
     };
   }
   return appData.records[dateStr];
@@ -830,8 +925,8 @@ function initSbClient() {
 }
 
 // Convert local record → Supabase row (omit id; upsert on date)
-function recToRow(rec) {
-  return {
+function recToRow(rec, withExtra = true) {
+  const row = {
     date:             rec.date,
     record_date:      rec.date,
     weight_kg:        rec.weight_kg,
@@ -843,6 +938,11 @@ function recToRow(rec) {
     exercises:             rec.exercises || [],
     calories_burned_total: rec.calories_burned_total || 0
   };
+  if (withExtra) {
+    row.sleep_hours = rec.sleep_hours ?? null;
+    row.alcohol     = rec.alcohol ?? null;
+  }
+  return row;
 }
 
 // Convert Supabase row → local record shape
@@ -856,7 +956,9 @@ function rowToRec(row) {
     daily_total_kcal:      row.daily_total_kcal || 0,
     meals:                 row.meals || [],
     exercises:             row.exercises || [],
-    calories_burned_total: row.calories_burned_total || 0
+    calories_burned_total: row.calories_burned_total || 0,
+    sleep_hours:           row.sleep_hours ?? null,
+    alcohol:               row.alcohol ?? null
   };
 }
 
@@ -875,6 +977,20 @@ function dequeue(dateStr) {
 }
 
 // Upsert one record. Falls back to offline queue on failure.
+let extraColsWarned = false;
+async function pushRow(rec) {
+  let { error } = await sbClient.from('records').upsert(recToRow(rec, true), { onConflict: 'date' });
+  if (error && /sleep_hours|alcohol/.test(error.message || '')) {
+    // Supabase側に新しい列がまだ無い場合：従来の項目だけ保存して止まらないようにする
+    ({ error } = await sbClient.from('records').upsert(recToRow(rec, false), { onConflict: 'date' }));
+    if (!error && !extraColsWarned) {
+      extraColsWarned = true;
+      toast('睡眠・お酒はまだクラウドに保存されません（SupabaseでSQLの実行が必要です）', 5000);
+    }
+  }
+  return error;
+}
+
 async function upsertRecord(dateStr) {
   const rec = appData.records[dateStr];
   if (!rec) return;
@@ -886,9 +1002,7 @@ async function upsertRecord(dateStr) {
   }
 
   try {
-    const { error } = await sbClient
-      .from('records')
-      .upsert(recToRow(rec), { onConflict: 'date' });
+    const error = await pushRow(rec);
     if (error) throw error;
     dequeue(dateStr);
     updateSyncBadge('synced');
@@ -907,7 +1021,16 @@ async function syncFromSupabase() {
     const { data, error } = await sbClient.from('records').select('*');
     if (error) throw error;
     if (data) {
-      data.forEach(row => { appData.records[row.date] = rowToRec(row); });
+      data.forEach(row => {
+        const local = appData.records[row.date];
+        const rec = rowToRec(row);
+        // クラウド側に新しい列が無い間は、端末内の睡眠・お酒を消さない
+        if (!('sleep_hours' in row) && local) {
+          rec.sleep_hours = local.sleep_hours ?? null;
+          rec.alcohol     = local.alcohol ?? null;
+        }
+        appData.records[row.date] = rec;
+      });
       saveLocal();
     }
     updateSyncBadge('synced');
@@ -927,9 +1050,7 @@ async function flushQueue() {
     const rec = appData.records[dateStr];
     if (!rec) { dequeue(dateStr); continue; }
     try {
-      const { error } = await sbClient
-        .from('records')
-        .upsert(recToRow(rec), { onConflict: 'date' });
+      const error = await pushRow(rec);
       if (!error) dequeue(dateStr);
     } catch(e) { /* leave in queue */ }
   }
@@ -1038,7 +1159,7 @@ function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
 
-  ['home','meal','exercise','history'].forEach(n => {
+  ['home','meal','training','exercise','history'].forEach(n => {
     const btn = document.getElementById('nav-' + n);
     if (!btn) return;
     const active = n === name;
@@ -1054,6 +1175,7 @@ function showScreen(name) {
   if (name === 'settings') loadSettings();
   if (name === 'meal')     resetMealForm();
   if (name === 'exercise') resetExerciseForm();
+  if (name === 'training') initTrainingForm();
 }
 
 // ============================================================
@@ -1068,6 +1190,9 @@ function renderHome() {
   const rec = getOrCreateRecord(today);
   document.getElementById('input-weight').value = rec.weight_kg !== null ? rec.weight_kg : '';
   document.getElementById('input-steps').value  = rec.steps     !== null ? rec.steps     : '';
+  document.getElementById('input-sleep').value  = rec.sleep_hours != null ? rec.sleep_hours : '';
+  renderAlcohol(rec);
+  renderTrainWeek(today);
 
   const dailyTarget  = appData.profile.target_kcal_daily;
   const weeklyTarget = appData.profile.target_kcal_weekly;
@@ -1398,7 +1523,7 @@ function renderHomeExercises(rec) {
       </div>
       <div class="flex-1 min-w-0">
         <p class="text-sm font-medium text-gray-800 truncate">${esc(e.name || '運動')}</p>
-        <p class="text-xs text-gray-400">${e.time}${e.sets ? ` · ${e.sets}セット` : ''}${e.weight_kg ? ` · ${e.weight_kg}kg` : ''}</p>
+        <p class="text-xs text-gray-400">${esc(exDetail(e))}</p>
       </div>
       <span class="text-base font-bold text-green-600 flex-shrink-0">-${(e.calories_burned || 0).toLocaleString()} kcal</span>
       <button onclick="deleteExercise('${e.id}')"
@@ -1428,6 +1553,8 @@ function saveTodayMeasurement() {
   const s = parseInt(document.getElementById('input-steps').value);
   rec.weight_kg = isNaN(w) ? null : +w.toFixed(1);
   rec.steps     = isNaN(s) ? null : s;
+  const sl = parseFloat(document.getElementById('input-sleep').value);
+  rec.sleep_hours = isNaN(sl) ? null : +sl.toFixed(1);
   recalcDay(today);
   saveLocal();
   upsertRecord(today);
@@ -1708,12 +1835,306 @@ function saveExercise() {
 }
 
 // ============================================================
+// TRAINING SCREEN (自重トレ)
+// ============================================================
+const WEEKLY_TRAIN_TARGET = 3;
+
+const BW_PATTERNS = [
+  { id: 'push', label: '押す' },
+  { id: 'legs', label: '脚' },
+  { id: 'pull', label: '引く' },
+  { id: 'core', label: '体幹' }
+];
+
+// level: 1=入門 2=中級 3=上級 / unit: reps=回 sec=秒
+const BW_MENU = {
+  push: [
+    { name: '膝つき腕立て',            level: 1, unit: 'reps' },
+    { name: '通常の腕立て',            level: 2, unit: 'reps' },
+    { name: '足を台に乗せた腕立て',    level: 3, unit: 'reps' },
+    { name: 'パイクプッシュアップ',    level: 3, unit: 'reps' }
+  ],
+  legs: [
+    { name: 'スクワット',              level: 1, unit: 'reps' },
+    { name: 'ブルガリアンスクワット',  level: 2, unit: 'reps' },
+    { name: '補助ありピストルスクワット', level: 3, unit: 'reps' }
+  ],
+  pull: [
+    { name: 'インバーテッドロウ（机・椅子）', level: 1, unit: 'reps' },
+    { name: '懸垂のネガティブ（ゆっくり下りる）', level: 2, unit: 'reps', note: '懸垂バーが必要' },
+    { name: '懸垂',                    level: 3, unit: 'reps', note: '懸垂バーが必要' }
+  ],
+  core: [
+    { name: 'プランク',                level: 1, unit: 'sec' },
+    { name: 'レッグレイズ',            level: 2, unit: 'reps' },
+    { name: 'ホロウボディ',            level: 3, unit: 'sec' }
+  ]
+};
+
+const LEVEL_LABEL = { 1: '入門', 2: '中級', 3: '上級' };
+const LEVEL_CLASS = {
+  1: 'bg-green-100 text-green-700',
+  2: 'bg-amber-100 text-amber-700',
+  3: 'bg-rose-100 text-rose-700'
+};
+
+let trainState = { pattern: 'push', exName: null, reps: ['', '', ''] };
+
+function bwFind(name) {
+  for (const p of BW_PATTERNS) {
+    const hit = (BW_MENU[p.id] || []).find(x => x.name === name);
+    if (hit) return { ...hit, pattern: p.id };
+  }
+  return null;
+}
+
+// 記録の表示用テキスト（運動・履歴の共通部品）
+function exSummary(e) {
+  if (e.type === 'bw' && e.reps && e.reps.length) {
+    return e.reps.join(' / ') + (e.unit === 'sec' ? '秒' : '回');
+  }
+  const parts = [];
+  if (e.sets) parts.push(`${e.sets}セット`);
+  if (e.weight_kg) parts.push(`${e.weight_kg}kg`);
+  return parts.join(' ');
+}
+function exDetail(e) {
+  const s = exSummary(e);
+  return `${e.time || ''}${s ? ' · ' + s : ''}`;
+}
+
+function setAlcohol(v) {
+  const today = todayStr();
+  const rec = getOrCreateRecord(today);
+  rec.alcohol = (rec.alcohol === v) ? null : v;
+  saveLocal();
+  upsertRecord(today);
+  renderAlcohol(rec);
+}
+
+function renderAlcohol(rec) {
+  const no  = document.getElementById('alc-no');
+  const yes = document.getElementById('alc-yes');
+  if (!no || !yes) return;
+  const base = 'flex-1 rounded-xl py-3 text-sm font-semibold border ';
+  no.className  = base + (rec.alcohol === false ? 'bg-green-500 border-green-500 text-white' : 'bg-gray-50 border-gray-200 text-gray-400');
+  yes.className = base + (rec.alcohol === true  ? 'bg-amber-500 border-amber-500 text-white' : 'bg-gray-50 border-gray-200 text-gray-400');
+}
+
+function renderTrainWeek(today) {
+  const el = document.getElementById('home-train-week');
+  if (!el) return;
+  const ws = weekSatStr(today);
+  const days = weekDates(ws).filter(d => {
+    const r = appData.records[d];
+    return r && (r.exercises || []).some(e => e.type === 'bw');
+  }).length;
+  el.textContent = `筋トレ 今週${days}日 / 目標${WEEKLY_TRAIN_TARGET}日`;
+  el.className = 'text-xs font-semibold ' + (days >= WEEKLY_TRAIN_TARGET ? 'text-green-600' : 'text-gray-500');
+}
+
+function initTrainingForm() {
+  document.getElementById('tr-date').value = todayStr();
+  document.getElementById('tr-memo').value = '';
+  if (!trainState.exName) {
+    trainState.exName = BW_MENU[trainState.pattern][0].name;
+  }
+  trainState.reps = ['', '', ''];
+  renderTraining();
+}
+
+function onTrainDateChange() { renderTraining(); }
+
+function selectPattern(p) {
+  trainState.pattern = p;
+  trainState.exName = BW_MENU[p][0].name;
+  trainState.reps = ['', '', ''];
+  renderTraining();
+}
+
+function selectBwExercise(name) {
+  trainState.exName = name;
+  trainState.reps = ['', '', ''];
+  renderTraining();
+}
+
+function addSetRow() {
+  if (trainState.reps.length >= 10) return;
+  trainState.reps.push('');
+  renderTrainSets();
+}
+function removeSetRow() {
+  if (trainState.reps.length <= 1) return;
+  trainState.reps.pop();
+  renderTrainSets();
+}
+function onRepInput(i, v) {
+  trainState.reps[i] = v;
+  updateTrainKcal();
+}
+
+// 直近の同じ種目の記録を探す
+function lastBwRecord(name, uptoDate) {
+  const dates = Object.keys(appData.records).filter(d => d <= uptoDate).sort().reverse();
+  for (const d of dates) {
+    const list = (appData.records[d].exercises || []).filter(e => e.type === 'bw' && e.name === name && e.reps && e.reps.length);
+    if (list.length) {
+      const e = list[list.length - 1];
+      return { date: d, reps: e.reps, unit: e.unit };
+    }
+  }
+  return null;
+}
+
+function validReps() {
+  return trainState.reps.map(v => parseInt(v)).filter(n => n > 0);
+}
+
+function estimateTrainKcal(dateStr, nSets) {
+  const rec = appData.records[dateStr];
+  const weight = (rec && rec.weight_kg) || appData.profile.start_weight_kg || 65;
+  const minutes = nSets * 1.5;           // 1セット＋休憩で約1.5分
+  return Math.round(3.5 * weight * minutes / 60); // 自重トレ MET 3.5
+}
+
+function updateTrainKcal() {
+  const el = document.getElementById('tr-kcal');
+  if (!el) return;
+  const n = validReps().length;
+  const date = document.getElementById('tr-date').value || todayStr();
+  el.textContent = n ? `消費カロリー（推定）約${estimateTrainKcal(date, n)} kcal` : '回数を入れると消費カロリーを推定します';
+}
+
+function renderTraining() {
+  const date = document.getElementById('tr-date').value || todayStr();
+
+  // 動作タブ
+  document.getElementById('tr-patterns').innerHTML = BW_PATTERNS.map(p => {
+    const on = p.id === trainState.pattern;
+    return `<button onclick="selectPattern('${p.id}')"
+      class="rounded-xl py-2.5 text-sm font-semibold border ${on ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-gray-50 border-gray-200 text-gray-500'}">${p.label}</button>`;
+  }).join('');
+
+  // 種目リスト
+  document.getElementById('tr-exercises').innerHTML = BW_MENU[trainState.pattern].map(x => {
+    const on = x.name === trainState.exName;
+    return `<button onclick="selectBwExercise('${x.name.replace(/'/g, "\\'")}')"
+      class="w-full text-left flex items-center gap-2 rounded-xl px-3 py-3 border ${on ? 'border-indigo-400 bg-indigo-50' : 'border-gray-100 bg-white'}">
+      <span class="text-xs font-semibold rounded-full px-2 py-0.5 ${LEVEL_CLASS[x.level]}">${LEVEL_LABEL[x.level]}</span>
+      <span class="flex-1 text-sm ${on ? 'font-bold text-gray-900' : 'text-gray-700'}">${esc(x.name)}</span>
+      ${x.note ? `<span class="text-xs text-gray-400">${esc(x.note)}</span>` : ''}
+    </button>`;
+  }).join('');
+
+  // 前回の記録
+  const ex = bwFind(trainState.exName);
+  const last = lastBwRecord(trainState.exName, date);
+  const lastEl = document.getElementById('tr-last');
+  if (last) {
+    const dd = parseDate(last.date);
+    const u = last.unit === 'sec' ? '秒' : '回';
+    lastEl.innerHTML = `<p><span class="text-gray-400">${dd.getMonth()+1}/${dd.getDate()}</span>　<span class="font-bold text-gray-800">${last.reps.join(' / ')}${u}</span></p>
+      <p class="text-xs text-gray-400 mt-1">今回の目標：どれか1セットでも前回より${ex && ex.unit === 'sec' ? '長く' : '多く'}</p>`;
+  } else {
+    lastEl.innerHTML = '<p class="text-gray-400">この種目は初めてです。無理のない回数で基準を作りましょう</p>';
+  }
+
+  document.getElementById('tr-sets-title').textContent = ex && ex.unit === 'sec' ? 'セットごとの秒数' : 'セットごとの回数';
+  renderTrainSets();
+  renderTrainToday(date);
+}
+
+function renderTrainSets() {
+  const ex = bwFind(trainState.exName);
+  const unit = ex && ex.unit === 'sec' ? '秒' : '回';
+  const date = document.getElementById('tr-date').value || todayStr();
+  const last = lastBwRecord(trainState.exName, date);
+  document.getElementById('tr-sets').innerHTML = trainState.reps.map((v, i) => {
+    const ph = last && last.reps[i] ? String(last.reps[i]) : '0';
+    return `<div class="flex items-center gap-3">
+      <span class="w-14 text-sm text-gray-500">${i + 1}セット</span>
+      <div class="flex-1 flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:border-indigo-400 focus-within:bg-white">
+        <input type="number" inputmode="numeric" min="0" value="${esc(v)}" placeholder="${ph}"
+          oninput="onRepInput(${i}, this.value)"
+          class="flex-1 bg-transparent text-xl font-bold text-gray-900 focus:outline-none min-w-0">
+        <span class="text-gray-400 text-sm ml-1">${unit}</span>
+      </div>
+    </div>`;
+  }).join('');
+  updateTrainKcal();
+}
+
+function renderTrainToday(date) {
+  const el = document.getElementById('tr-today');
+  const rec = appData.records[date];
+  const list = rec ? (rec.exercises || []).filter(e => e.type === 'bw') : [];
+  if (!list.length) {
+    el.innerHTML = '<p class="text-gray-400 text-sm text-center py-3">まだ記録がありません</p>';
+    return;
+  }
+  el.innerHTML = list.map(e => `
+    <div class="flex items-center gap-3 py-2.5 border-b border-gray-50 last:border-0">
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-medium text-gray-800 truncate">${esc(e.name)}</p>
+        <p class="text-xs text-gray-400">${esc(exDetail(e))}</p>
+      </div>
+      <span class="text-sm font-bold text-green-600 flex-shrink-0">-${(e.calories_burned || 0).toLocaleString()} kcal</span>
+      <button onclick="deleteTrainingEntry('${e.id}', '${date}')"
+        class="w-7 h-7 flex items-center justify-center rounded-full bg-red-50 active:bg-red-100 text-red-400 flex-shrink-0">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>`).join('');
+}
+
+function deleteTrainingEntry(id, date) {
+  const rec = appData.records[date];
+  if (!rec) return;
+  rec.exercises = (rec.exercises || []).filter(e => e.id !== id);
+  recalcDay(date);
+  saveLocal();
+  upsertRecord(date);
+  renderTraining();
+}
+
+function saveTraining() {
+  const reps = validReps();
+  if (!reps.length) { toast('回数を1つ以上入力してください'); return; }
+  const ex = bwFind(trainState.exName);
+  if (!ex) { toast('種目を選んでください'); return; }
+
+  const date = document.getElementById('tr-date').value || todayStr();
+  const rec  = getOrCreateRecord(date);
+  if (!rec.exercises) rec.exercises = [];
+  rec.exercises.push({
+    id: uuid(), time: nowTime(), name: ex.name,
+    type: 'bw', pattern: ex.pattern, level: ex.level, unit: ex.unit,
+    reps, sets: reps.length, weight_kg: null,
+    memo: document.getElementById('tr-memo').value.trim(),
+    calories_burned: estimateTrainKcal(date, reps.length),
+    has_photo: false
+  });
+  recalcDay(date);
+  saveLocal();
+  upsertRecord(date);
+
+  toast('記録しました ✓');
+  document.getElementById('tr-memo').value = '';
+  trainState.reps = ['', '', ''];
+  renderTraining();
+}
+
+// ============================================================
 // HISTORY SCREEN
 // ============================================================
 function historyMeasBadges(r) {
   let html = '';
   if (r.weight_kg !== null) html += `<span>⚖️ ${r.weight_kg}kg</span>`;
   if (r.steps     !== null) html += `<span>👟 ${r.steps.toLocaleString()}歩</span>`;
+  if (r.sleep_hours != null) html += `<span>😴 ${r.sleep_hours}時間</span>`;
+  if (r.alcohol === true)  html += `<span>🍺 飲んだ</span>`;
+  if (r.alcohol === false) html += `<span>✅ 飲まない</span>`;
   return html;
 }
 
@@ -1744,6 +2165,20 @@ function historyMeasHtml(r) {
             class="flex-1 bg-transparent text-sm font-bold text-gray-800 focus:outline-none min-w-0">
           <span class="text-xs text-gray-400 flex-shrink-0">歩</span>
         </div>
+      </div>
+      <div class="flex gap-2 mb-2">
+        <div class="flex-1 flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 focus-within:border-blue-400">
+          <span class="text-xs text-gray-400 flex-shrink-0">😴</span>
+          <input type="number" id="history-meas-sleep-${date}" step="0.5" placeholder="睡眠"
+            class="flex-1 bg-transparent text-sm font-bold text-gray-800 focus:outline-none min-w-0">
+          <span class="text-xs text-gray-400 flex-shrink-0">時間</span>
+        </div>
+        <select id="history-meas-alc-${date}"
+          class="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-700 focus:outline-none">
+          <option value="">お酒：未入力</option>
+          <option value="no">飲まない</option>
+          <option value="yes">飲んだ</option>
+        </select>
       </div>
       <div class="flex gap-2">
         <button onclick="saveHistoryMeasurement('${date}')"
@@ -1856,7 +2291,7 @@ async function renderHistory() {
           <p class="text-xs font-semibold text-green-500 mb-1">🏋️ 運動</p>`;
         r.exercises.forEach(e => {
           html += `<div class="flex justify-between items-center">
-            <span class="text-sm text-gray-700 flex-1 min-w-0 truncate">${e.time} ${esc(e.name || '運動')}${e.sets ? ` ${e.sets}セット` : ''}${e.weight_kg ? ` ${e.weight_kg}kg` : ''}</span>
+            <span class="text-sm text-gray-700 flex-1 min-w-0 truncate">${esc(e.time)} ${esc(e.name || '運動')} ${esc(exSummary(e))}</span>
             <span class="text-sm font-semibold text-green-600 ml-2 flex-shrink-0">-${(e.calories_burned || 0).toLocaleString()} kcal</span>
           </div>`;
         });
@@ -1961,6 +2396,10 @@ function toggleHistoryMeasEdit(date) {
     const sEl = document.getElementById('history-meas-steps-' + date);
     if (wEl) wEl.value = rec.weight_kg !== null ? rec.weight_kg : '';
     if (sEl) sEl.value = rec.steps     !== null ? rec.steps     : '';
+    const slEl = document.getElementById('history-meas-sleep-' + date);
+    const alEl = document.getElementById('history-meas-alc-' + date);
+    if (slEl) slEl.value = rec.sleep_hours != null ? rec.sleep_hours : '';
+    if (alEl) alEl.value = rec.alcohol === true ? 'yes' : (rec.alcohol === false ? 'no' : '');
   }
 }
 
@@ -1976,6 +2415,10 @@ function saveHistoryMeasurement(date) {
   const sVal = parseInt(document.getElementById('history-meas-steps-' + date).value);
   rec.weight_kg = isNaN(wVal) ? null : +wVal.toFixed(1);
   rec.steps     = isNaN(sVal) ? null : sVal;
+  const slVal = parseFloat(document.getElementById('history-meas-sleep-' + date).value);
+  const alVal = document.getElementById('history-meas-alc-' + date).value;
+  rec.sleep_hours = isNaN(slVal) ? null : +slVal.toFixed(1);
+  rec.alcohol     = alVal === 'yes' ? true : (alVal === 'no' ? false : null);
   recalcDay(date);
   saveLocal();
   upsertRecord(date);
